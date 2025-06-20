@@ -43,3 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Additional changes from the code block
+.dart_tool/
+.packages
+.idea/
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+*.lock
+*.tmp
+friend_project/
