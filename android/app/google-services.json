@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1021345010198",
+    "project_id": "carshare-3dc21",
+    "storage_bucket": "carshare-3dc21.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1021345010198:android:6cb97298fe1c9ccb519b37",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_3"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdsExad-NoQ6ioNVo-shsKWmxjZefeJ8g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
