@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:carsharing/pages/user/tabs/available_trips_tab.dart';
+import 'package:carsharing/pages/user/trip_details_page.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -355,18 +356,31 @@ class _FavoriteTripsPageState extends State<FavoriteTripsPage> {
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
                   title: Text('${trip['from']} to ${trip['to']}'),
-                  subtitle: Text('€${trip['price']} - ${trip['date']}'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.favorite, color: Colors.red),
-                    onPressed: () => _toggleFavorite(tripId),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('€${trip['price']} - ${trip['date']}'),
+                      Text('Driver: ${trip['driverName'] ?? 'Unknown'}'),
+                    ],
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.favorite, color: Colors.red),
+                        onPressed: () => _toggleFavorite(tripId),
+                      ),
+                      const Icon(Icons.arrow_forward_ios),
+                    ],
                   ),
                   onTap: () {
-                     Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RideDetailPage(ride: trip),
-                        ),
-                      );
+                    // Navigate to trip details page using the trip ID
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => TripDetailsPage(tripId: trip['id'] ?? ''),
+                      ),
+                    );
                   },
                 ),
               );
