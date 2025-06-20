@@ -1,5 +1,5 @@
-name: flutter_application_3
-description: "A new Flutter project."
+name: carsharing
+description: "A car sharing application with user and driver roles."
 publish_to: 'none'
 version: 0.1.0
 
@@ -9,9 +9,12 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.20.0
+  cloud_firestore: ^4.17.5
   email_validator: ^2.1.17
-  firebase_auth: ^4.17.4
-  cloud_firestore: ^4.17.3
+  dropdown_search: ^5.0.6
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
@@ -20,3 +23,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # To add assets to your application, add an assets section, like this:
+  # assets:
+  #   - images/a_dot_burr.jpeg
+  #   - images/a_dot_ham.jpeg
+
+  # An image asset can refer to one or more resolution-specific "variants", see

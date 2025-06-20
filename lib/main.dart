@@ -5,6 +5,10 @@ import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dashboard_page.dart';
+import 'user_dashboard_page.dart';
+import 'driver_dashboard_page.dart';
+import 'ride_list_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +25,40 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Kamili Drive',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        visualDensity: VisualDensity.adaptivePlatformDensity,
+        scaffoldBackgroundColor: Colors.grey[100],
+        appBarTheme: AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 1,
+          iconTheme: IconThemeData(color: Colors.grey[800]),
+          titleTextStyle: TextStyle(
+            color: Colors.grey[800],
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        ),
+      ),
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomePage(),
@@ -28,6 +66,9 @@ class MainApp extends StatelessWidget {
         '/signup': (context) => const SignUpPage(),
         '/verify-email': (context) => const EmailVerificationPage(),
         '/dashboard': (context) => const DashboardPage(),
+        '/user-dashboard': (context) => const UserDashboardPage(),
+        '/driver-dashboard': (context) => const DriverDashboardPage(),
+        '/rides': (context) => const RideListPage(),
         '/profile': (context) => const ProfilePage(),
       },
     );
@@ -40,37 +81,59 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blue.shade200, Colors.blue.shade500],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+              const Icon(Icons.directions_car, size: 120, color: Colors.white),
+              const SizedBox(height: 24),
             const Text(
-              'Welcome to\nKamili Drive!',
+                'Welcome to Kamili Drive!',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.orange),
-            ),
-            const SizedBox(height: 24),
-            const Icon(Icons.directions_car, size: 100),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
+                style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Find your perfect ride.',
+                style: TextStyle(fontSize: 18, color: Colors.white70),
+              ),
+              const SizedBox(height: 48),
+              SizedBox(
+                width: 250,
+                child: ElevatedButton(
                   onPressed: () {
                     Navigator.pushNamed(context, '/signup');
                   },
-                  child: const Text('Sign Up'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blue,
+                  ),
+                  child: const Text('Get Started'),
                 ),
-                const SizedBox(width: 16),
-                ElevatedButton(
+              ),
+              const SizedBox(height: 16),
+              TextButton(
                   onPressed: () {
                     Navigator.pushNamed(context, '/login');
                   },
-                  child: const Text('Log In'),
+                child: const Text(
+                  'Already have an account? Log In',
+                  style: TextStyle(color: Colors.white),
                 ),
-              ],
             ),
           ],
+          ),
         ),
       ),
     );
@@ -93,7 +156,12 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _repeatPasswordController = TextEditingController();
+  final TextEditingController _carModelController = TextEditingController();
+  final TextEditingController _carColorController = TextEditingController();
+  final TextEditingController _carYearController = TextEditingController();
+  final TextEditingController _licenseNumberController = TextEditingController();
   bool _isLoading = false;
+  String _selectedRole = 'user'; // 'user' or 'driver'
 
   String? _validateEmail(String? value) {
     if (value == null || value.isEmpty) {
@@ -138,7 +206,8 @@ class _SignUpPageState extends State<SignUpPage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        final credential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
           email: _mailController.text.trim(),
           password: _passwordController.text.trim(),
         );
@@ -146,7 +215,7 @@ class _SignUpPageState extends State<SignUpPage> {
         if (!credential.user!.emailVerified) {
           await credential.user!.sendEmailVerification();
         }
-        Navigator.pushReplacementNamed(context, '/verify-email');
+    Navigator.pushReplacementNamed(context, '/verify-email');
       } on FirebaseAuthException catch (e) {
         String message = 'Registration failed';
         if (e.code == 'email-already-in-use') {
@@ -166,92 +235,231 @@ class _SignUpPageState extends State<SignUpPage> {
   Future<void> _saveUserProfile() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
-    await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+    
+    final userData = {
       'name': _nameController.text.trim(),
       'surname': _surnameController.text.trim(),
       'age': _ageController.text.trim(),
       'phone': _phoneController.text.trim(),
       'email': _mailController.text.trim(),
-    });
+      'role': _selectedRole,
+    };
+
+    // Add driver-specific fields if role is driver
+    if (_selectedRole == 'driver') {
+      userData['car_model'] = _carModelController.text.trim();
+      userData['car_color'] = _carColorController.text.trim();
+      userData['car_year'] = _carYearController.text.trim();
+      userData['license_number'] = _licenseNumberController.text.trim();
+      userData['is_verified'] = 'false'; // Driver verification status
+    }
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .set(userData);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(title: const Text('Create Account')),
+      body: Center(
         child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Text('Let\'s get started!', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                    Icon(Icons.directions_car),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    "Let's get started!",
+                    style: TextStyle(
+                        fontSize: 28, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    "Create an account to continue.",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  
+                  // Role Selection
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+                          const Text(
+                            'Account Type',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('User'),
+                                  subtitle: const Text('Book rides'),
+                                  value: 'user',
+                                  groupValue: _selectedRole,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedRole = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('Driver'),
+                                  subtitle: const Text('Offer rides'),
+                                  value: 'driver',
+                                  groupValue: _selectedRole,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedRole = value!;
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  TextFormField(
+                    controller: _nameController,
+                    decoration:
+                        const InputDecoration(labelText: 'Name*'),
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'Name is required'
+                        : null,
+              ),
+              const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _surnameController,
+                    decoration:
+                        const InputDecoration(labelText: 'Surname*'),
+                    validator: (value) => value?.isEmpty ?? true
+                        ? 'Surname is required'
+                        : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _ageController,
+                    decoration:
+                        const InputDecoration(labelText: 'Age*'),
+                    keyboardType: TextInputType.number,
+                    validator: (value) {
+                      if (value?.isEmpty ?? true) return 'Age is required';
+                      final age = int.tryParse(value!);
+                      if (age == null || age < 18) {
+                        return 'Must be at least 18 years old';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _mailController,
+                    decoration: const InputDecoration(
+                        labelText: 'Email*'),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: _validateEmail,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _phoneController,
+                    decoration: const InputDecoration(labelText: 'Phone'),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _passwordController,
+                    decoration:
+                        const InputDecoration(labelText: 'Password*'),
+                    obscureText: true,
+                    validator: _validatePassword,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _repeatPasswordController,
+                    decoration: const InputDecoration(
+                        labelText: 'Repeat Password*'),
+                    obscureText: true,
+                    validator: _validateRepeatPassword,
+                  ),
+                  
+                  // Driver-specific fields
+                  if (_selectedRole == 'driver') ...[
+              const SizedBox(height: 24),
+                    const Text(
+                      'Driver Information',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _carModelController,
+                      decoration: const InputDecoration(
+                          labelText: 'Car Model*'),
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Car model is required for drivers'
+                          : null,
+              ),
+              const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _carColorController,
+                      decoration: const InputDecoration(
+                          labelText: 'Car Color*'),
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'Car color is required for drivers'
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _carYearController,
+                      decoration: const InputDecoration(
+                          labelText: 'Car Year*'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        if (value?.isEmpty ?? true) return 'Car year is required';
+                        final year = int.tryParse(value!);
+                        if (year == null || year < 1900 || year > DateTime.now().year) {
+                          return 'Please enter a valid car year';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _licenseNumberController,
+                      decoration: const InputDecoration(
+                          labelText: 'Driver License Number*'),
+                      validator: (value) => value?.isEmpty ?? true
+                          ? 'License number is required for drivers'
+                          : null,
+                    ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Name*'),
-                  validator: (value) => value?.isEmpty ?? true ? 'Name is required' : null,
-                ),
-                TextFormField(
-                  controller: _surnameController,
-                  decoration: const InputDecoration(labelText: 'Surname*'),
-                  validator: (value) => value?.isEmpty ?? true ? 'Surname is required' : null,
-                ),
-                TextFormField(
-                  controller: _ageController,
-                  decoration: const InputDecoration(labelText: 'Age*'),
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value?.isEmpty ?? true) return 'Age is required';
-                    final age = int.tryParse(value!);
-                    if (age == null || age < 18) return 'Must be at least 18 years old';
-                    return null;
-                  },
-                ),
-                TextFormField(
-                  controller: _mailController,
-                  decoration: const InputDecoration(labelText: 'Email*'),
-                  keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
-                ),
-                TextFormField(
-                  controller: _phoneController,
-                  decoration: const InputDecoration(labelText: 'Phone'),
-                  keyboardType: TextInputType.phone,
-                ),
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(labelText: 'Password*'),
-                  obscureText: true,
-                  validator: _validatePassword,
-                ),
-                TextFormField(
-                  controller: _repeatPasswordController,
-                  decoration: const InputDecoration(labelText: 'Repeat Password*'),
-                  obscureText: true,
-                  validator: _validateRepeatPassword,
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: _isLoading
-                      ? const CircularProgressIndicator()
+                  
+                  const SizedBox(height: 24),
+                  _isLoading
+                      ? const Center(child: CircularProgressIndicator())
                       : ElevatedButton(
                           onPressed: _signUp,
                           child: const Text('Sign Up'),
                         ),
-                ),
-                const SizedBox(height: 16),
-                const Text('*required fields'),
-                const Text('Password must contain uppercase, numbers, and special characters'),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -268,7 +476,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailOrPhoneController = TextEditingController();
+  final TextEditingController _emailOrPhoneController =
+      TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
   bool _isLoading = false;
@@ -284,7 +493,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   bool _isPhoneNumber(String input) {
-    // Simple phone number detection: starts with + or digits, and is at least 10 digits
     final phoneReg = RegExp(r'^(\+?\d{10,15})');
     return phoneReg.hasMatch(input.trim());
   }
@@ -294,7 +502,6 @@ class _LoginPageState extends State<LoginPage> {
     final input = _emailOrPhoneController.text.trim();
     if (_isPhone) {
       if (!_otpSent) {
-        // Send OTP
         await FirebaseAuth.instance.verifyPhoneNumber(
           phoneNumber: input,
           verificationCompleted: (PhoneAuthCredential credential) async {
@@ -303,8 +510,10 @@ class _LoginPageState extends State<LoginPage> {
           },
           verificationFailed: (FirebaseAuthException e) {
             setState(() => _isLoading = false);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Phone verification failed: \\${e.message}')),
+    ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Phone verification failed: ${e.message}')),
             );
           },
           codeSent: (String verificationId, int? resendToken) {
@@ -322,7 +531,6 @@ class _LoginPageState extends State<LoginPage> {
           },
         );
       } else {
-        // Verify OTP
         try {
           final credential = PhoneAuthProvider.credential(
             verificationId: _verificationId!,
@@ -333,18 +541,40 @@ class _LoginPageState extends State<LoginPage> {
         } on FirebaseAuthException catch (e) {
           setState(() => _isLoading = false);
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Invalid OTP: \\${e.message}')),
+            SnackBar(
+                content: Text('Invalid OTP: ${e.message}')),
           );
         }
       }
     } else {
-      // Email login
       try {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: input,
           password: _passwordController.text.trim(),
         );
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        
+        // Get user role and route accordingly
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          final doc = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .get();
+          if (doc.exists) {
+            final userData = doc.data()!;
+            final role = userData['role'] ?? 'user';
+            
+            if (role == 'driver') {
+              Navigator.pushReplacementNamed(context, '/driver-dashboard');
+            } else {
+              Navigator.pushReplacementNamed(context, '/user-dashboard');
+            }
+          } else {
+            Navigator.pushReplacementNamed(context, '/user-dashboard');
+          }
+        } else {
+          Navigator.pushReplacementNamed(context, '/user-dashboard');
+        }
       } on FirebaseAuthException catch (e) {
         setState(() => _isLoading = false);
         String message = 'Login failed';
@@ -365,7 +595,9 @@ class _LoginPageState extends State<LoginPage> {
     final input = _emailOrPhoneController.text.trim();
     if (_isPhone) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset is only available for email accounts.')),
+        const SnackBar(
+            content: Text(
+                'Password reset is only available for email accounts.')),
       );
       return;
     }
@@ -378,11 +610,32 @@ class _LoginPageState extends State<LoginPage> {
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: input);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset email sent!')),
+        const SnackBar(
+          content: Text('Password reset email sent! Check your inbox.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      String message = 'Failed to send reset email';
+      if (e.code == 'user-not-found') {
+        message = 'No account found with this email address.';
+      } else if (e.code == 'invalid-email') {
+        message = 'Please enter a valid email address.';
+      } else {
+        message = 'Error: ${e.message}';
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to send reset email: \\${e.toString()}')),
+        SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -391,43 +644,66 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Log In')),
-      body: Padding(
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+                const Text(
+                  "Welcome Back!",
+                  style: TextStyle(
+                      fontSize: 28, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  "Log in to your account to continue.",
+                  style: TextStyle(fontSize: 16, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
             TextField(
-              controller: _emailOrPhoneController,
-              decoration: const InputDecoration(labelText: 'Email or Phone'),
-              onChanged: _onInputChanged,
-              keyboardType: TextInputType.emailAddress,
+                  controller: _emailOrPhoneController,
+                  decoration:
+                      const InputDecoration(labelText: 'Email or Phone'),
+                  onChanged: _onInputChanged,
+                  keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 16),
-            if (!_isPhone)
-              TextField(
-                controller: _passwordController,
-                decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
-              ),
-            if (_isPhone && _otpSent)
-              TextField(
-                controller: _otpController,
-                decoration: const InputDecoration(labelText: 'Enter OTP'),
-                keyboardType: TextInputType.number,
-              ),
-            const SizedBox(height: 24),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _login,
-                    child: Text(_isPhone && !_otpSent ? 'Send OTP' : 'Log in'),
+                if (!_isPhone)
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(labelText: 'Password'),
+              obscureText: true,
+            ),
+                if (_isPhone && _otpSent)
+                  TextField(
+                    controller: _otpController,
+                    decoration: const InputDecoration(labelText: 'Enter OTP'),
+                    keyboardType: TextInputType.number,
                   ),
-            if (!_isPhone)
-              TextButton(
-                onPressed: _resetPassword,
-                child: const Text('Forgot Password?'),
-              ),
-          ],
+            const SizedBox(height: 24),
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ElevatedButton(
+              onPressed: _login,
+                        child: Text(
+                            _isPhone && !_otpSent ? 'Send OTP' : 'Log In'),
+                      ),
+                if (!_isPhone)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _resetPassword,
+                      child: const Text('Forgot Password?'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -444,7 +720,11 @@ class EmailVerificationPage extends StatefulWidget {
 class _EmailVerificationPageState extends State<EmailVerificationPage> {
   bool _isVerified = false;
   bool _isLoading = false;
+  bool _isResending = false;
+  bool _canResend = true;
+  int _resendCooldown = 0;
   Timer? _timer;
+  Timer? _resendTimer;
 
   @override
   void initState() {
@@ -464,8 +744,8 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     await user?.reload();
     user = FirebaseAuth.instance.currentUser;
     if (user?.emailVerified ?? false) {
-      setState(() {
-        _isVerified = true;
+    setState(() {
+      _isVerified = true;
         _isLoading = false;
       });
       _timer?.cancel();
@@ -476,9 +756,86 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     }
   }
 
+  Future<void> _resendVerificationEmail() async {
+    if (!_canResend) return;
+    
+    setState(() {
+      _isResending = true;
+      _canResend = false;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.sendEmailVerification();
+        
+        // Start cooldown timer
+        _resendCooldown = 60; // 60 seconds cooldown
+        _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+          setState(() {
+            _resendCooldown--;
+          });
+          if (_resendCooldown <= 0) {
+      setState(() {
+        _canResend = true;
+      });
+            timer.cancel();
+          }
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification email sent! Check your inbox.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        throw Exception('User not found');
+      }
+    } on FirebaseAuthException catch (e) {
+      String message = 'Failed to send verification email';
+      if (e.code == 'too-many-requests') {
+        message = 'Too many requests. Please wait before trying again.';
+      } else if (e.code == 'user-not-found') {
+        message = 'User not found. Please sign up again.';
+      } else {
+        message = 'Error: ${e.message}';
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+        ),
+      );
+      
+      // Reset resend state on error
+      setState(() {
+        _canResend = true;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('An unexpected error occurred: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      
+      // Reset resend state on error
+      setState(() {
+        _canResend = true;
+      });
+    } finally {
+      setState(() {
+        _isResending = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
+    _resendTimer?.cancel();
     super.dispose();
   }
 
@@ -491,17 +848,64 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.mail_outline, size: 80),
+              const Icon(Icons.mail_outline, size: 80, color: Colors.blue),
               const SizedBox(height: 24),
-              const Text('Waiting for email verification...', style: TextStyle(fontSize: 22)),
+              const Text(
+                'Verify Your Email',
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 16),
-              const Text('Please check your inbox and click the verification link.'),
-              const SizedBox(height: 24),
+              const Text(
+                'We\'ve sent a verification link to your email address.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                FirebaseAuth.instance.currentUser?.email ?? '',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
               _isLoading ? const CircularProgressIndicator() : const SizedBox.shrink(),
               if (_isVerified)
                 const Padding(
                   padding: EdgeInsets.only(top: 24.0),
-                  child: Text('Email verified! Logging you in...', style: TextStyle(color: Colors.green)),
+                  child: Text(
+                    'Email verified! Logging you in...',
+                    style: TextStyle(color: Colors.green, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              const SizedBox(height: 32),
+              const Text(
+                'Didn\'t receive the email?',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              _isResending
+                  ? const CircularProgressIndicator(strokeWidth: 2)
+                  : ElevatedButton.icon(
+                      onPressed: _canResend ? _resendVerificationEmail : null,
+                      icon: const Icon(Icons.refresh),
+                      label: Text(_canResend 
+                          ? 'Resend Verification Email'
+                          : 'Resend in $_resendCooldown seconds'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _canResend ? Colors.blue : Colors.grey,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      ),
+                    ),
+              const SizedBox(height: 24),
+              TextButton(
+                onPressed: () {
+                  FirebaseAuth.instance.signOut();
+                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                },
+                child: const Text(
+                  'Back to Sign Up',
+                  style: TextStyle(color: Colors.grey),
+                ),
                 ),
             ],
           ),
@@ -524,8 +928,12 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _carModelController = TextEditingController(); // Driver specific
+  final TextEditingController _carColorController = TextEditingController(); // Driver specific
+  final TextEditingController _carYearController = TextEditingController(); // Driver specific
   bool _isEditing = false;
   bool _isLoading = true;
+  String _userRole = 'user'; // Default role
 
   @override
   void initState() {
@@ -543,6 +951,12 @@ class _ProfilePageState extends State<ProfilePage> {
       _surnameController.text = data['surname'] ?? '';
       _ageController.text = data['age'] ?? '';
       _phoneController.text = data['phone'] ?? '';
+      _userRole = data['role'] ?? 'user';
+      if (_userRole == 'driver') {
+        _carModelController.text = data['car_model'] ?? '';
+        _carColorController.text = data['car_color'] ?? '';
+        _carYearController.text = data['car_year'] ?? '';
+      }
     }
     setState(() {
       _isLoading = false;
@@ -555,13 +969,21 @@ class _ProfilePageState extends State<ProfilePage> {
       try {
         final user = FirebaseAuth.instance.currentUser;
         if (user != null) {
-          await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          final updateData = {
             'name': _nameController.text.trim(),
             'surname': _surnameController.text.trim(),
             'age': _ageController.text.trim(),
             'phone': _phoneController.text.trim(),
-          });
-          setState(() {
+          };
+
+          if (_userRole == 'driver') {
+            updateData['car_model'] = _carModelController.text.trim();
+            updateData['car_color'] = _carColorController.text.trim();
+            updateData['car_year'] = _carYearController.text.trim();
+          }
+
+          await FirebaseFirestore.instance.collection('users').doc(user.uid).update(updateData);
+                        setState(() {
             _isEditing = false;
             _isLoading = false;
           });
@@ -604,7 +1026,7 @@ class _ProfilePageState extends State<ProfilePage> {
         elevation: 1,
         title: Row(
           children: [
-            const Icon(Icons.directions_car, color: Colors.orange),
+            const Icon(Icons.directions_car, color: Colors.blue),
             const Spacer(),
             ElevatedButton(
               onPressed: () => _logout(context),
@@ -621,94 +1043,123 @@ class _ProfilePageState extends State<ProfilePage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Center(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Card(
-                    elevation: 8,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24.0),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Card(
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
                       child: Form(
                         key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 32,
-                                  backgroundColor: Colors.orange.shade100,
-                                  child: const Icon(Icons.person, size: 38, color: Colors.orange),
-                                ),
-                                const SizedBox(width: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                                  backgroundColor: Colors.blue.shade100,
+                                  child: const Icon(Icons.person, size: 38, color: Colors.blue),
+                        ),
+                        const SizedBox(width: 16),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                                       Text(
                                         '${_nameController.text} ${_surnameController.text}',
                                         style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                                       ),
-                                      const SizedBox(height: 4),
+                            const SizedBox(height: 4),
                                       Text(user?.email ?? '', style: const TextStyle(fontSize: 14, color: Colors.grey)),
                                     ],
                                   ),
                                 ),
-                                ElevatedButton(
+                                IconButton(
+                                  icon: Icon(_isEditing ? Icons.save : Icons.edit, color: Colors.blue),
                                   onPressed: _isEditing ? _save : _toggleEdit,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _isEditing ? Colors.green : Colors.blue,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  ),
-                                  child: Text(_isEditing ? 'Save' : 'Edit'),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 28),
+                            const Divider(height: 32),
                             TextFormField(
                               controller: _nameController,
+                              decoration: const InputDecoration(labelText: 'Name'),
                               enabled: _isEditing,
-                              decoration: const InputDecoration(labelText: 'Name', border: OutlineInputBorder()),
-                              validator: (v) => v == null || v.isEmpty ? 'Name required' : null,
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _surnameController,
+                              decoration: const InputDecoration(labelText: 'Surname'),
                               enabled: _isEditing,
-                              decoration: const InputDecoration(labelText: 'Surname', border: OutlineInputBorder()),
-                              validator: (v) => v == null || v.isEmpty ? 'Surname required' : null,
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _ageController,
+                              decoration: const InputDecoration(labelText: 'Age'),
+                            keyboardType: TextInputType.number,
                               enabled: _isEditing,
-                              decoration: const InputDecoration(labelText: 'Age', border: OutlineInputBorder()),
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                if (v == null || v.isEmpty) return 'Age required';
-                                final age = int.tryParse(v);
-                                if (age == null || age < 18) return 'Must be at least 18';
-                                return null;
-                              },
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
                               controller: _phoneController,
-                              enabled: _isEditing,
-                              decoration: const InputDecoration(labelText: 'Phone', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(labelText: 'Phone'),
                               keyboardType: TextInputType.phone,
-                              validator: (v) => v == null || v.isEmpty ? 'Phone required' : null,
+                              enabled: _isEditing,
                             ),
+                            if (_userRole == 'driver') ...[
+                              const Divider(height: 32),
+                              const Text(
+                                'Driver Information',
+                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _carModelController,
+                                decoration: const InputDecoration(labelText: 'Car Model'),
+                                enabled: _isEditing,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _carColorController,
+                                decoration: const InputDecoration(labelText: 'Car Color'),
+                                enabled: _isEditing,
+                              ),
+                              const SizedBox(height: 16),
+                              TextFormField(
+                                controller: _carYearController,
+                                decoration: const InputDecoration(labelText: 'Car Year'),
+                                keyboardType: TextInputType.number,
+                                enabled: _isEditing,
+                              ),
+                              const SizedBox(height: 24),
+                              Center(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Feature not yet implemented.')),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.upload_file),
+                                  label: const Text('Upload Driver License'),
+                                  style: ElevatedButton.styleFrom(
+                                    foregroundColor: Colors.blue,
+        backgroundColor: Colors.white,
+                                    side: const BorderSide(color: Colors.blue),
+                                  ),
+                                ),
+                              ),
+                            ]
                           ],
                         ),
                       ),
                     ),
-                  ),
                 ),
               ),
             ),
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: 2,
         items: const [
@@ -717,105 +1168,6 @@ class _ProfilePageState extends State<ProfilePage> {
           BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
         ],
       ),
-    );
-  }
-}
-
-class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
-
-  @override
-  State<DashboardPage> createState() => _DashboardPageState();
-}
-
-class _DashboardPageState extends State<DashboardPage> {
-  int _selectedIndex = 0;
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-    if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ProfilePage()),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            const Icon(Icons.directions_car, color: Colors.orange),
-            const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('ENG', style: TextStyle(fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.white,
-        elevation: 1,
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.landscape, size: 80, color: Colors.orange),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Go Search for\nSomething!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500, color: Colors.black54),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_car), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
-        ],
-      ),
-      backgroundColor: Colors.white,
     );
   }
 }
