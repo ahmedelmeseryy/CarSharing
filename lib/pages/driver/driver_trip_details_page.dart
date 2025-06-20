@@ -237,7 +237,19 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
                             Text('Booked: $formattedDate'),
                           ],
                         ),
-                        trailing: _buildBookingStatusChip(bookingData['status'] ?? 'pending'),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildBookingStatusChip(bookingData['status'] ?? 'pending'),
+                            const SizedBox(width: 8),
+                            if (bookingData['status'] != 'cancelled')
+                              IconButton(
+                                icon: const Icon(Icons.cancel, color: Colors.red),
+                                onPressed: () => _showCancelBookingDialog(booking.id, bookingData),
+                                tooltip: 'Cancel Booking',
+                              ),
+                          ],
+                        ),
                         onTap: () => _showBookingDetails(bookingData),
                       ),
                     );
@@ -306,12 +318,20 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Passenger: ${bookingData['passengerName'] ?? 'Unknown'}'),
+            Text('Trip: ${bookingData['tripFrom']} to ${bookingData['tripTo']}'),
             Text('Seats: ${bookingData['seats']}'),
             Text('Total Price: €${bookingData['totalPrice']}'),
             Text('Payment Method: ${bookingData['paymentMethod'] ?? 'N/A'}'),
             Text('Status: ${bookingData['status'] ?? 'pending'}'),
             if (bookingData['createdAt'] is Timestamp)
               Text('Booked: ${DateFormat.yMd().add_jm().format((bookingData['createdAt'] as Timestamp).toDate())}'),
+            if (bookingData['tripDate'] is Timestamp)
+              Text('Trip Date: ${DateFormat.yMd().add_jm().format((bookingData['tripDate'] as Timestamp).toDate())}'),
+            if (bookingData['status'] == 'cancelled' && bookingData['cancelledAt'] is Timestamp) ...[
+              const SizedBox(height: 8),
+              Text('Cancelled: ${DateFormat.yMd().add_jm().format((bookingData['cancelledAt'] as Timestamp).toDate())}'),
+              Text('Cancelled by: ${bookingData['cancelledBy'] ?? 'Unknown'}'),
+            ],
           ],
         ),
         actions: [
@@ -356,6 +376,70 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating trip: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showCancelBookingDialog(String bookingId, Map<String, dynamic> bookingData) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Booking'),
+        content: Text('Are you sure you want to cancel the booking for ${bookingData['passengerName'] ?? 'this passenger'}?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _handleCancelBooking(bookingId, bookingData);
+    }
+  }
+
+  Future<void> _handleCancelBooking(String bookingId, Map<String, dynamic> bookingData) async {
+    try {
+      // Update booking status to cancelled
+      await FirebaseFirestore.instance
+          .collection('bookings')
+          .doc(bookingId)
+          .update({
+        'status': 'cancelled',
+        'cancelledAt': FieldValue.serverTimestamp(),
+        'cancelledBy': 'driver',
+      });
+
+      // Refund seats to the trip
+      final tripRef = FirebaseFirestore.instance.collection('trips').doc(widget.tripId);
+      final tripDoc = await tripRef.get();
+      if (tripDoc.exists) {
+        final currentSeats = tripDoc.data()!['seats'] as int;
+        final refundedSeats = bookingData['seats'] as int;
+        await tripRef.update({
+          'seats': currentSeats + refundedSeats,
+        });
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Booking cancelled successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error cancelling booking: $e'),
           backgroundColor: Colors.red,
         ),
       );
