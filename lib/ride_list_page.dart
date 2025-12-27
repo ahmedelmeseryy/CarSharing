@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'ride_detail_page.dart';
+import 'package:carsharing/widgets/trip_card.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class RideListPage extends StatefulWidget {
   final String? searchQuery;
-  
+
   const RideListPage({super.key, this.searchQuery});
 
   @override
@@ -93,6 +94,7 @@ class _RideListPageState extends State<RideListPage> {
       });
     } catch (e) {
       // Handle error, maybe show a message to the user
+      // ignore: avoid_print
       print("Error loading rides from Firestore: $e");
       setState(() {
         allRides = [];
@@ -207,50 +209,19 @@ class _RideListPageState extends State<RideListPage> {
                           final ride = filteredRides[index];
                           final rideId = _getRideId(ride);
                           final isFavorite = favoriteRides.contains(rideId);
-                          
-                          return Card(
-                            elevation: 2,
-                            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.all(16),
-                              leading: CircleAvatar(
-                                radius: 30,
-                                backgroundColor: Colors.blue.shade100,
-                                child: const Icon(Icons.person, size: 30, color: Colors.blue),
-                              ),
-                              title: Text(
-                                '${ride['start']} to ${ride['end']}',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text(
-                                '${ride['date']} at ${ride['time']}\nDriver: ${ride['driver']} - €${ride['price']}',
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: Icon(
-                                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                                      color: isFavorite ? Colors.red : Colors.grey,
-                                    ),
-                                    onPressed: () => _toggleFavorite(rideId),
-                                  ),
-                                  const Icon(Icons.arrow_forward_ios),
-                                ],
-                              ),
-                              isThreeLine: true,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => RideDetailPage(ride: ride),
-                                  ),
-                                );
-                              },
-                            ),
+
+                          return TripCard(
+                            ride: Map<String, dynamic>.from(ride),
+                            isFavorite: isFavorite,
+                            onFavoriteToggle: () => _toggleFavorite(rideId),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => RideDetailPage(ride: ride),
+                                ),
+                              );
+                            },
                           );
                         },
                       ),
@@ -259,4 +230,4 @@ class _RideListPageState extends State<RideListPage> {
       ),
     );
   }
-} 
+}

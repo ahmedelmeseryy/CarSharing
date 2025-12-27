@@ -1,5 +1,6 @@
 plugins {
-    id("com.google.gms.google-services") version "4.4.2" apply false
+    // Align with the version already on the classpath to avoid conflicts.
+    id("com.google.gms.google-services") version "4.3.15" apply false
 }
 
 allprojects {

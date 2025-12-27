@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:carsharing/pages/user/tabs/available_trips_tab.dart';
 import 'package:carsharing/pages/user/trip_details_page.dart';
+import 'package:carsharing/pages/user/trip_search_page.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -24,6 +25,20 @@ class _UserDashboardPageState extends State<UserDashboardPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Available Trips'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Advanced Search',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TripSearchPage(),
+                ),
+              );
+            },
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Padding(

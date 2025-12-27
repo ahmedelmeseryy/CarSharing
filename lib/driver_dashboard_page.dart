@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'driver_profile_page.dart';
 import 'add_trip_page.dart';
 import 'pages/driver/driver_trip_details_page.dart';
+import 'pages/driver/trip_templates_page.dart';
+import 'pages/admin/seed_trips_page.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
@@ -35,16 +37,57 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
+      appBar: AppBar(
+        title: Text(_getAppBarTitle()),
+        actions: _selectedIndex == 0
+            ? [
+                IconButton(
+                  icon: const Icon(Icons.science),
+                  tooltip: 'Seed Test Trips',
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SeedTripsPage(),
+                      ),
+                    );
+                  },
+                ),
+              ]
+            : null,
+      ),
         body: _widgetOptions.elementAt(_selectedIndex),
         floatingActionButton: _selectedIndex == 0
-            ? FloatingActionButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AddTripPage()),
-                  );
-                },
-                child: const Icon(Icons.add),
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton(
+                    heroTag: "templates",
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TripTemplatesPage(),
+                        ),
+                      );
+                    },
+                    child: const Icon(Icons.bookmark),
+                    tooltip: 'Trip Templates',
+                    backgroundColor: Colors.orange,
+                  ),
+                  const SizedBox(height: 10),
+                  FloatingActionButton(
+                    heroTag: "add_trip",
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const AddTripPage()),
+                      );
+                    },
+                    child: const Icon(Icons.add),
+                    tooltip: 'Add New Trip',
+                  ),
+                ],
               )
             : null,
         bottomNavigationBar: BottomNavigationBar(
@@ -69,6 +112,19 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
         ),
       ),
     );
+  }
+
+  String _getAppBarTitle() {
+    switch (_selectedIndex) {
+      case 0:
+        return 'My Created Trips';
+      case 1:
+        return 'Trip Bookings';
+      case 2:
+        return 'Profile';
+      default:
+        return 'Driver Dashboard';
+    }
   }
 }
 
@@ -134,11 +190,7 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Created Trips'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<QuerySnapshot>(
         stream: _getDriverTripsStream(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -194,7 +246,6 @@ class _DriverTripsPageState extends State<DriverTripsPage> {
             },
           );
         },
-      ),
     );
   }
 }
@@ -224,11 +275,7 @@ class _BookingsPageState extends State<BookingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Trip Bookings'),
-      ),
-      body: StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<QuerySnapshot>(
         stream: _getDriverBookingsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -296,9 +343,7 @@ class _BookingsPageState extends State<BookingsPage> {
               );
             },
           );
-        },
-      ),
-    );
+        });
   }
 
   Widget _buildStatusChip(String status) {

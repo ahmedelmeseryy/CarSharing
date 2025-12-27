@@ -64,6 +64,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1021345010198',
     projectId: 'carshare-3dc21',
     storageBucket: 'carshare-3dc21.firebasestorage.app',
+    iosClientId: '1021345010198-6n7bfckioks6o34uc8apv4fdslcg2q05.apps.googleusercontent.com',
     iosBundleId: 'com.example.flutterApplication3',
   );
 
@@ -73,6 +74,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '1021345010198',
     projectId: 'carshare-3dc21',
     storageBucket: 'carshare-3dc21.firebasestorage.app',
+    iosClientId: '1021345010198-6n7bfckioks6o34uc8apv4fdslcg2q05.apps.googleusercontent.com',
     iosBundleId: 'com.example.flutterApplication3',
   );
 
@@ -85,4 +87,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'carshare-3dc21.firebasestorage.app',
     measurementId: 'G-5PXYS93CZZ',
   );
+
 }
