@@ -108,6 +108,53 @@ class TripSearchService {
     return results;
   }
 
+  /// Filter and rank trips by destination distance from a user's desired destination.
+  ///
+  /// Parameters:
+  ///   - trips: List of trip objects from Firestore
+  ///   - destLat, destLon: User's destination coordinates
+  ///   - radiusKm: Maximum distance in kilometers (default 10 km)
+  ///
+  /// Returns: List of [TripWithDistance] objects sorted by distance (nearest first).
+  ///          Only trips with dropoff location within the radius are included.
+  static List<TripWithDistance> filterAndRankByDestinationDistance(
+    List<dynamic> trips,
+    double destLat,
+    double destLon, {
+    double radiusKm = 10.0,
+  }) {
+    final results = <TripWithDistance>[];
+
+    for (final trip in trips) {
+      // Try to extract dropoff/destination location from the trip
+      final dropoffLocation = trip['dropoffLocation'];
+
+      if (dropoffLocation != null) {
+        // Trip has structured location data with lat/lon
+        final double? tripLat = dropoffLocation['latitude'];
+        final double? tripLon = dropoffLocation['longitude'];
+
+        if (tripLat != null && tripLon != null) {
+          final distance = calculateDistance(destLat, destLon, tripLat, tripLon);
+
+          if (distance <= radiusKm) {
+            results.add(TripWithDistance(
+              trip: trip,
+              distanceKm: distance,
+            ));
+          }
+        }
+      }
+      // Note: If no dropoffLocation with coordinates, the trip is skipped.
+      // In future, could add fallback to geocode 'end' address if needed.
+    }
+
+    // Sort by distance (nearest first)
+    results.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+
+    return results;
+  }
+
   /// Format distance for display (e.g., "2.5 km" or "500 m")
   static String formatDistance(double distanceKm) {
     if (distanceKm < 1.0) {

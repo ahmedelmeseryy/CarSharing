@@ -114,23 +114,42 @@ class PlacesService {
     
     // Create the request future and store it while running
     final future = _fetchPredictions(key).then((results) {
-      // Cache only when we actually got results to avoid poisoning cache with
-      // transient empty responses (rate limits, network errors).
+      // Cache and return results, or fallback to local suggestions
       if (results.isNotEmpty) {
         print('[NOMINATIM CACHE] Caching ${results.length} results for "$key" (expires in ${_cacheTtl.inSeconds}s)');
         _cache[key] = _CacheEntry(
           predictions: results,
           expiry: DateTime.now().add(_cacheTtl),
         );
+        _ongoingRequests.remove(key);
+        return results;
       } else {
-        print('[NOMINATIM CACHE] Not caching empty results for "$key"');
+        // Try local fallback when Nominatim returns no results
+        print('[NOMINATIM] No results from Nominatim, trying local fallback for "$key"');
+        final fallbackResults = _localFallback(input);
+        if (fallbackResults.isNotEmpty) {
+          print('[NOMINATIM CACHE] Caching ${fallbackResults.length} fallback results for "$key"');
+          _cache[key] = _CacheEntry(
+            predictions: fallbackResults,
+            expiry: DateTime.now().add(_cacheTtl),
+          );
+        }
+        _ongoingRequests.remove(key);
+        return fallbackResults;
+      }
+    }).catchError((e) {
+      print('[NOMINATIM REQUEST] Request failed for "$key": $e, trying local fallback');
+      // On any error, try local fallback
+      final fallbackResults = _localFallback(input);
+      if (fallbackResults.isNotEmpty) {
+        print('[NOMINATIM CACHE] Caching ${fallbackResults.length} fallback results for "$key" (error recovery)');
+        _cache[key] = _CacheEntry(
+          predictions: fallbackResults,
+          expiry: DateTime.now().add(_cacheTtl),
+        );
       }
       _ongoingRequests.remove(key);
-      return results;
-    }).catchError((e) {
-      print('[NOMINATIM REQUEST] Request failed for "$key": $e');
-      _ongoingRequests.remove(key);
-      return <PlacePrediction>[];
+      return fallbackResults;
     });
 
     _ongoingRequests[key] = future;
@@ -147,6 +166,7 @@ class PlacesService {
         'format': 'json',
         'limit': '10',
         'addressdetails': '1',
+      'countrycodes': 'de', // Restrict to Germany
       });
 
       print('[NOMINATIM] Fetching predictions for "$input"');
@@ -295,28 +315,74 @@ class PlacesService {
         'format': 'json',
         'limit': '1',
         'addressdetails': '1',
+      'countrycodes': 'de', // Restrict to Germany
       });
 
+      print('[GEOCODE] Geocoding address: "$address"');
       final response = await http.get(uri, headers: {
         'User-Agent': 'CarSharing/1.0 (dev@local)',
         'Accept-Language': 'en',
-      });
+      }).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
         if (data.isNotEmpty) {
           final result = data[0];
-          return PlaceLocation(
+          final location = PlaceLocation(
             latitude: double.parse(result['lat'].toString()),
             longitude: double.parse(result['lon'].toString()),
             address: result['display_name'] ?? address,
           );
+          print('[GEOCODE] Successfully geocoded: lat=${location.latitude}, lon=${location.longitude}');
+          return location;
+        } else {
+          print('[GEOCODE] No results from Nominatim for "$address"');
         }
+      } else {
+        print('[GEOCODE] API returned status ${response.statusCode}');
       }
     } catch (e) {
-      print('Error geocoding address: $e');
+      print('[GEOCODE] Error geocoding address: $e');
     }
 
+    // Fallback: try to geocode local city names
+    print('[GEOCODE] Geocoding failed, trying local fallback for "$address"');
+    final fallbackLocation = _geocodeLocalCities(address);
+    if (fallbackLocation != null) {
+      print('[GEOCODE] Using fallback location: lat=${fallbackLocation.latitude}, lon=${fallbackLocation.longitude}');
+      return fallbackLocation;
+    }
+
+    return null;
+  }
+
+  /// Fallback geocoding for common German cities
+  static PlaceLocation? _geocodeLocalCities(String address) {
+    final lower = address.toLowerCase();
+    
+    final cityCoordinates = {
+      'marburg': PlaceLocation(latitude: 50.8065, longitude: 8.7705, address: 'Marburg, Hesse, Germany'),
+      'berlin': PlaceLocation(latitude: 52.5200, longitude: 13.4050, address: 'Berlin, Germany'),
+      'munich': PlaceLocation(latitude: 48.1351, longitude: 11.5820, address: 'Munich, Bavaria, Germany'),
+      'muenchen': PlaceLocation(latitude: 48.1351, longitude: 11.5820, address: 'Munich, Bavaria, Germany'),
+      'münchen': PlaceLocation(latitude: 48.1351, longitude: 11.5820, address: 'Munich, Bavaria, Germany'),
+      'hamburg': PlaceLocation(latitude: 53.5511, longitude: 9.9937, address: 'Hamburg, Germany'),
+      'frankfurt': PlaceLocation(latitude: 50.1109, longitude: 8.6821, address: 'Frankfurt am Main, Hesse, Germany'),
+      'cologne': PlaceLocation(latitude: 50.9375, longitude: 6.9603, address: 'Cologne, North Rhine-Westphalia, Germany'),
+      'koeln': PlaceLocation(latitude: 50.9375, longitude: 6.9603, address: 'Cologne, North Rhine-Westphalia, Germany'),
+      'köln': PlaceLocation(latitude: 50.9375, longitude: 6.9603, address: 'Cologne, North Rhine-Westphalia, Germany'),
+      'stuttgart': PlaceLocation(latitude: 48.7758, longitude: 9.1829, address: 'Stuttgart, Baden-Württemberg, Germany'),
+      'dusseldorf': PlaceLocation(latitude: 51.2277, longitude: 6.7735, address: 'Düsseldorf, North Rhine-Westphalia, Germany'),
+      'düsseldorf': PlaceLocation(latitude: 51.2277, longitude: 6.7735, address: 'Düsseldorf, North Rhine-Westphalia, Germany'),
+    };
+    
+    // Check for exact city name match
+    for (final entry in cityCoordinates.entries) {
+      if (lower.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+    
     return null;
   }
 

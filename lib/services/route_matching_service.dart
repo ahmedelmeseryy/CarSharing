@@ -144,6 +144,102 @@ class RouteMatchingService {
     }
   }
 
+  /// Find matching trips by city names (text-based search) - fallback when coordinates are unavailable
+  static Future<List<RouteMatch>> findMatchingTripsByName({
+    required String fromCity,
+    required String toCity,
+    DateTime? preferredDate,
+  }) async {
+    final matches = <RouteMatch>[];
+
+    try {
+      print('[SEARCH] Text-based search for "$fromCity" to "$toCity"');
+      
+      Query query = FirebaseFirestore.instance.collection('trips');
+
+      // Filter by date if provided
+      if (preferredDate != null) {
+        final start = DateTime(preferredDate.year, preferredDate.month, preferredDate.day);
+        final end = start.add(const Duration(days: 1));
+        query = query
+            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+            .where('date', isLessThan: Timestamp.fromDate(end));
+      }
+
+      final tripsSnapshot = await query.limit(500).get();
+
+      final fromCityLower = fromCity.toLowerCase();
+      final toCityLower = toCity.toLowerCase();
+
+      for (var tripDoc in tripsSnapshot.docs) {
+        final tripData = tripDoc.data() as Map<String, dynamic>;
+        final tripId = tripDoc.id;
+
+        // Check if trip matches the search criteria (text-based)
+        final tripFrom = ((tripData['from'] ?? '') + ' ' + (tripData['fromAddress'] ?? '')).toLowerCase();
+        final tripTo = ((tripData['to'] ?? '') + ' ' + (tripData['toAddress'] ?? '')).toLowerCase();
+        final tripStops = (tripData['stops'] as List? ?? [])
+            .map((s) => (s['address'] ?? '').toString().toLowerCase())
+            .join(' ');
+
+        bool fromMatches = tripFrom.contains(fromCityLower) || tripStops.contains(fromCityLower);
+        bool toMatches = tripTo.contains(toCityLower) || tripStops.contains(toCityLower);
+
+        // Also check if the from location comes before the to location in the trip route
+        bool correctOrder = _isCorrectRouteOrder(tripFrom, tripStops, tripTo, fromCityLower, toCityLower);
+
+        if (fromMatches && toMatches && correctOrder) {
+          // Create a match with a score based on exact matches
+          double score = 80.0; // Base score for text match
+          
+          // Boost score if it's an exact city name match
+          if (tripFrom.contains(fromCityLower) && tripTo.contains(toCityLower)) {
+            score = 95.0;
+          }
+          
+          final match = RouteMatch(
+            tripId: tripId,
+            tripData: tripData,
+            matchScore: score,
+            pickupStop: tripData['from'],
+            dropoffStop: tripData['to'],
+          );
+          matches.add(match);
+        }
+      }
+
+      // Sort by match score (best matches first)
+      matches.sort((a, b) => b.matchScore.compareTo(a.matchScore));
+
+      print('[SEARCH] Text-based search found ${matches.length} matching trips');
+      return matches;
+    } catch (e) {
+      print('[SEARCH] Error in text-based search: $e');
+      return [];
+    }
+  }
+
+  /// Check if route order is correct (from before to)
+  static bool _isCorrectRouteOrder(
+    String tripFrom,
+    String tripStops,
+    String tripTo,
+    String searchFrom,
+    String searchTo,
+  ) {
+    // Get position of search locations in the trip route
+    final fullRoute = '$tripFrom $tripStops $tripTo';
+    final fromPos = fullRoute.indexOf(searchFrom);
+    final toPos = fullRoute.indexOf(searchTo);
+
+    if (fromPos == -1 || toPos == -1) {
+      return true; // One is missing, let other checks handle it
+    }
+
+    return fromPos < toPos; // from should come before to
+  }
+
+
   /// Find the best match for a trip
   static RouteMatch? _findBestMatch({
     required Map<String, dynamic> tripData,

@@ -68,19 +68,6 @@ class _TripSearchPageState extends State<TripSearchPage> {
         return;
       }
 
-      // Check if we have coordinates
-      if (_fromLatitude == null || _fromLongitude == null ||
-          _toLatitude == null || _toLongitude == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select addresses from the suggestions for accurate matching'),
-            backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        // Still proceed with search, but matching will be less accurate
-      }
-
       // Show loading
       showDialog(
         context: context,
@@ -89,15 +76,30 @@ class _TripSearchPageState extends State<TripSearchPage> {
       );
 
       try {
-        // Find matching trips
-        final matches = await RouteMatchingService.findMatchingTrips(
-          userFromLat: _fromLatitude ?? 0.0,
-          userFromLng: _fromLongitude ?? 0.0,
-          userToLat: _toLatitude ?? 0.0,
-          userToLng: _toLongitude ?? 0.0,
-          preferredDate: _selectedDate,
-          searchRadius: 10.0, // 10 km radius
-        );
+        List<RouteMatch> matches = [];
+
+        // Check if we have coordinates from autocomplete selection
+        if (_fromLatitude != null && _fromLongitude != null &&
+            _toLatitude != null && _toLongitude != null) {
+          print('[SEARCH] Using coordinate-based search');
+          // Find matching trips using coordinates
+          matches = await RouteMatchingService.findMatchingTrips(
+            userFromLat: _fromLatitude!,
+            userFromLng: _fromLongitude!,
+            userToLat: _toLatitude!,
+            userToLng: _toLongitude!,
+            preferredDate: _selectedDate,
+            searchRadius: 10.0, // 10 km radius
+          );
+        } else {
+          print('[SEARCH] Coordinates not available, using text-based search');
+          // Fallback: Use text-based search by city names
+          matches = await RouteMatchingService.findMatchingTripsByName(
+            fromCity: _fromController.text,
+            toCity: _toController.text,
+            preferredDate: _selectedDate,
+          );
+        }
 
         // Apply filters to the matches
         final filteredMatches = matches.where((match) {
@@ -107,8 +109,8 @@ class _TripSearchPageState extends State<TripSearchPage> {
             return false;
           }
           
-          // Filter by available seats
-          final availableSeats = int.tryParse(match.tripData['availableSeats'].toString()) ?? 0;
+          // Filter by available seats (use 'seats' field, not 'availableSeats')
+          final availableSeats = int.tryParse(match.tripData['seats'].toString()) ?? 0;
           if (availableSeats < _selectedSeats) {
             return false;
           }
