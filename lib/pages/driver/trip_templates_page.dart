@@ -105,7 +105,7 @@ class TripTemplatesPage extends StatelessWidget {
                       ),
                       IconButton(
                         icon: const Icon(Icons.arrow_forward, color: Colors.blue),
-                        onPressed: () => _useTemplate(context, templateData),
+                        onPressed: () => _useTemplate(context),
                       ),
                     ],
                   ),
@@ -119,11 +119,11 @@ class TripTemplatesPage extends StatelessWidget {
     );
   }
 
-  void _useTemplate(BuildContext context, Map<String, dynamic> templateData) {
+  void _useTemplate(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AddTripPage(templateData: templateData),
+        builder: (context) => const AddTripPage(),
       ),
     );
   }

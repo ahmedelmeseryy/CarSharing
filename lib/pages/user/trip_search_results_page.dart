@@ -1,23 +1,25 @@
-import 'package:carsharing/pages/user/trip_details_page.dart';
-import 'package:carsharing/services/route_matching_service.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class TripSearchResultsPage extends StatelessWidget {
-  final List<RouteMatch> matches;
+import 'package:carsharing/features/trip/data/models/trip.dart';
+import 'package:carsharing/pages/user/trip_booking_detail_page.dart';
+
+class TripSearchResultsPage extends ConsumerWidget {
+  final List<Trip> trips;
   final String searchFrom;
   final String searchTo;
 
   const TripSearchResultsPage({
     super.key,
-    required this.matches,
+    required this.trips,
     required this.searchFrom,
     required this.searchTo,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: Column(
@@ -31,7 +33,7 @@ class TripSearchResultsPage extends StatelessWidget {
           ],
         ),
       ),
-      body: matches.isEmpty
+      body: trips.isEmpty
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -55,7 +57,7 @@ class TripSearchResultsPage extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'Found ${matches.length} matching trip${matches.length > 1 ? 's' : ''}',
+                    'Found ${trips.length} matching trip${trips.length > 1 ? 's' : ''}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -63,11 +65,12 @@ class TripSearchResultsPage extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: ListView.builder(
+                  child: ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: matches.length,
+                    itemCount: trips.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      return _buildMatchCard(context, matches[index]);
+                      return _buildTripCard(context, ref, trips[index]);
                     },
                   ),
                 ),
@@ -76,216 +79,170 @@ class TripSearchResultsPage extends StatelessWidget {
     );
   }
 
-  Widget _buildMatchCard(BuildContext context, RouteMatch match) {
-    final tripData = match.tripData;
-    final tripId = match.tripId;
-
-    String formattedDate = 'N/A';
-    if (tripData['date'] is Timestamp) {
-      formattedDate = DateFormat.yMd().add_jm().format(
-        (tripData['date'] as Timestamp).toDate(),
-      );
-    }
-
-    final price = tripData['price']?.toStringAsFixed(2) ?? 'N/A';
-    final seats = tripData['seats']?.toString() ?? 'N/A';
-    final matchPercentage = match.matchScore.round();
+  Widget _buildTripCard(BuildContext context, WidgetRef ref, Trip trip) {
+    final price = trip.estimatedFare.toStringAsFixed(2);
+    final seats = trip.availableSeats;
+    final formattedDate =
+        DateFormat.yMd().add_jm().format(trip.tripStartDateTime.toLocal());
 
     return Card(
       elevation: 3,
-      margin: const EdgeInsets.only(bottom: 16),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: match.matchScore > 70
-              ? Colors.green
-              : match.matchScore > 50
-                  ? Colors.orange
-                  : Colors.grey,
-          width: 2,
-        ),
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TripDetailsPage(tripId: tripId),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '€$price',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+                Text('Seats: $seats'),
+              ],
             ),
-          );
-        },
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Match score badge
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: match.matchScore > 70
-                          ? Colors.green.shade100
-                          : match.matchScore > 50
-                              ? Colors.orange.shade100
-                              : Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '$matchPercentage% Match',
-                      style: TextStyle(
-                        color: match.matchScore > 70
-                            ? Colors.green.shade900
-                            : match.matchScore > 50
-                                ? Colors.orange.shade900
-                                : Colors.grey.shade900,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.location_on, size: 16, color: Colors.green),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              trip.sourceAddress.placeAddress ?? 'Unknown origin',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  Text(
-                    '€$price',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              
-              // Route info
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.green),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                tripData['fromAddress'] ?? tripData['from'] ?? 'N/A',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (match.pickupStop != null) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, top: 4),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.flag, size: 16, color: Colors.red),
+                          const SizedBox(width: 6),
+                          Expanded(
                             child: Text(
-                              'Pickup: ${match.pickupStop}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue.shade700,
-                                fontStyle: FontStyle.italic,
-                              ),
+                              trip.destinationAddress.placeAddress ?? 'Unknown destination',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          if (match.distanceToPickup != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Text(
-                                '${match.distanceToPickup!.toStringAsFixed(1)} km away',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ),
                         ],
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.location_on, size: 16, color: Colors.red),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                tripData['toAddress'] ?? tripData['to'] ?? 'N/A',
-                                style: const TextStyle(fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (match.dropoffStop != null) ...[
-                          Padding(
-                            padding: const EdgeInsets.only(left: 20, top: 4),
-                            child: Text(
-                              'Dropoff: ${match.dropoffStop}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.blue.shade700,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                          if (match.distanceToDropoff != null)
-                            Padding(
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Text(
-                                '${match.distanceToDropoff!.toStringAsFixed(1)} km away',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _buildDriverInfo(trip.driverId),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Trip: ${trip.tripId ?? 'N/A'}',
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ),
+                Text(
+                  formattedDate,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  if (trip.tripId == null || trip.tripId!.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Trip details are missing. Please try another trip.'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TripBookingDetailPage(trip: trip),
                     ),
-                  ),
-                ],
+                  );
+                },
+                child: const Text('Book Trip'),
               ),
-              const SizedBox(height: 12),
-              
-              // Trip details
-              Row(
-                children: [
-                  Icon(Icons.calendar_today, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(
-                    formattedDate,
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(width: 16),
-                  Icon(Icons.event_seat, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(
-                    '$seats seats',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.person, size: 16, color: Colors.grey.shade600),
-                  const SizedBox(width: 4),
-                  Text(
-                    tripData['driverName'] ?? 'Unknown Driver',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildDriverInfo(String driverId) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('users').doc(driverId).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.blue.shade100,
+                child: const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text('Loading driver info...'),
+            ],
+          );
+        }
+
+        String driverName = 'Unknown Driver';
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final userData = snapshot.data!.data() as Map<String, dynamic>?;
+          driverName = userData?['name'] as String? ?? 'Unknown Driver';
+        }
+
+        return Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.blue.shade100,
+              child: const Icon(Icons.person, color: Colors.blue),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Driver: $driverName',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -1,205 +1,230 @@
-import 'package:carsharing/pages/user/trip_details_page.dart';
-import 'package:carsharing/pages/user/driver_profile_page.dart';
-import 'package:carsharing/widgets/featured_trips_carousel.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:carsharing/core/providers/app_providers.dart';
+import 'package:carsharing/features/trip/data/models/trip.dart';
+import 'package:carsharing/features/booking/data/models/booking_requests.dart';
+import 'package:carsharing/core/providers/mutation_providers.dart';
+import 'package:carsharing/core/storage/secure_storage.dart';
+import 'package:carsharing/services/location_service.dart';
 
-class AvailableTripsTab extends StatefulWidget {
+class AvailableTripsTab extends ConsumerStatefulWidget {
   final String searchQuery;
   const AvailableTripsTab({super.key, required this.searchQuery});
 
   @override
-  State<AvailableTripsTab> createState() => _AvailableTripsTabState();
+  ConsumerState<AvailableTripsTab> createState() => _AvailableTripsTabState();
 }
 
-class _AvailableTripsTabState extends State<AvailableTripsTab> {
-  Set<String> favoriteTrips = {};
+class _AvailableTripsTabState extends ConsumerState<AvailableTripsTab> {
+  double? _lat;
+  double? _lon;
+  bool _locationChecked = false;
 
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
+    _initLocation();
   }
 
-  Future<void> _loadFavorites() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-    
-    if (userDoc.exists && userDoc.data()!['favorite_trips'] != null) {
-      final List<String> favorites = List<String>.from(userDoc.data()!['favorite_trips']);
+  Future<void> _initLocation() async {
+    try {
+      final pos = await LocationService.getCurrentLocation();
       setState(() {
-        favoriteTrips = favorites.toSet();
+        _lat = pos?.latitude ?? 52.52; // fallback to Berlin
+        _lon = pos?.longitude ?? 13.405;
+        _locationChecked = true;
+      });
+    } catch (_) {
+      // If location services crash (e.g., missing Play Services), fall back to a safe default.
+      setState(() {
+        _lat = 52.52;
+        _lon = 13.405;
+        _locationChecked = true;
       });
     }
   }
 
-  void _toggleFavorite(String tripId) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to add favorites.')),
-      );
-      return;
-    }
-
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-    setState(() {
-      if (favoriteTrips.contains(tripId)) {
-        favoriteTrips.remove(tripId);
-        userRef.update({
-          'favorite_trips': FieldValue.arrayRemove([tripId])
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Removed from favorites')),
-        );
-      } else {
-        favoriteTrips.add(tripId);
-        userRef.update({
-          'favorite_trips': FieldValue.arrayUnion([tripId])
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Added to favorites')),
-        );
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('trips').snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('No trips available.'));
-        }
+    // If we haven't checked location yet, show loader
+    if (!_locationChecked) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        var trips = snapshot.data!.docs;
+    // If location unavailable, show prompt
+    if (_lat == null || _lon == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Text('Location unavailable. Enable location services to find nearby trips.'),
+            ],
+          ),
+        ),
+      );
+    }
 
+    final tripsAsync = ref.watch(
+      searchNearSourceProvider((
+        lat: _lat!,
+        lon: _lon!,
+        radiusKm: 10.0,
+      )),
+    );
+
+    final tokenStorage = ref.read(secureStorageProvider);
+    final joinNotifier = ref.read(joinTripProvider.notifier);
+
+    return tripsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+      data: (data) {
+        final trips = (data as List).cast<Trip>();
+
+        // Apply text filter to addresses
+        List<Trip> filtered = trips;
         if (widget.searchQuery.isNotEmpty) {
-          trips = trips.where((trip) {
-            final data = trip.data() as Map<String, dynamic>;
-            final from = data['from'].toString().toLowerCase();
-            final to = data['to'].toString().toLowerCase();
-            final searchLower = widget.searchQuery.toLowerCase();
-            return from.contains(searchLower) || to.contains(searchLower);
+          final q = widget.searchQuery.toLowerCase();
+          filtered = trips.where((t) {
+            final from = t.sourceAddress.placeAddress?.toLowerCase() ?? '';
+            final to = t.destinationAddress.placeAddress?.toLowerCase() ?? '';
+            return from.contains(q) || to.contains(q);
           }).toList();
         }
 
-        if (trips.isEmpty) {
-          return const Center(
-              child: Text('No trips found for your search query.'));
+        if (filtered.isEmpty) {
+          return const Center(child: Text('No trips found for your search query.'));
         }
 
-        return CustomScrollView(
-          slivers: [
-            // Featured Carousel
-            SliverToBoxAdapter(
-              child: FeaturedTripsCarousel(
-                onTripTap: (trip) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TripDetailsPage(
-                        tripId: trip['id'] ?? '',
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final trip = trips[index];
-                    final tripData = trip.data() as Map<String, dynamic>;
-                    final tripId = trip.id;
-                    final price = tripData['price']?.toStringAsFixed(2) ?? 'N/A';
-                    final seats = tripData['seats']?.toString() ?? 'N/A';
-                    final isFavorite = favoriteTrips.contains(tripId);
+        return ListView.builder(
+          padding: const EdgeInsets.all(8.0),
+          itemCount: filtered.length,
+          itemBuilder: (context, index) {
+            final trip = filtered[index];
+            final dateStr = DateFormat.yMd().add_Hm().format(trip.tripStartDateTime.toLocal());
+            final price = trip.estimatedFare.toStringAsFixed(2);
+            final seats = trip.availableSeats;
 
-                    String formattedDate = 'N/A';
-                    if (tripData['date'] is Timestamp) {
-                      formattedDate =
-                          DateFormat.yMd().format((tripData['date'] as Timestamp).toDate());
-                    }
+            return Card(
+              elevation: 2,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(16),
+                leading: CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.blue.shade100,
+                  child: const Icon(Icons.directions_car, color: Colors.blue),
+                ),
+                title: Text(
+                  '${trip.sourceAddress.placeAddress ?? 'Unknown'} → ${trip.destinationAddress.placeAddress ?? 'Unknown'}',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  'Date: $dateStr | ₹$price | $seats seat(s)',
+                  style: const TextStyle(fontSize: 12),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.info_outline),
+                  onPressed: () {
+                    showModalBottomSheet(
+                      context: context,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                      ),
+                      builder: (ctx) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Trip Details',
+                                style: Theme.of(ctx).textTheme.titleLarge,
+                              ),
+                              const SizedBox(height: 8),
+                              Text('From: ${trip.sourceAddress.placeAddress ?? 'Unknown'}'),
+                              Text('To: ${trip.destinationAddress.placeAddress ?? 'Unknown'}'),
+                              Text('Vehicle: ${trip.vehicleNumber}'),
+                              Text('Driver ID: ${trip.driverId}'),
+                              Text('Date: $dateStr'),
+                              Text('Estimated Fare: ₹$price'),
+                              Text('Available Seats: $seats'),
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx),
+                                    child: const Text('Close'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      final passengerId = await tokenStorage.getUserId();
+                                      if (passengerId == null || passengerId.isEmpty) {
+                                        if (context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Please log in to book this trip.')),
+                                          );
+                                        }
+                                        return;
+                                      }
 
-                    return Card(
-                      elevation: 2,
-                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        leading: GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => DriverProfilePage(
-                                  driverId: tripData['driverId'] ?? '',
-                                  driverName: tripData['driverName'] ?? 'Unknown Driver',
-                                ),
-                              ),
-                            );
-                          },
-                          child: CircleAvatar(
-                            radius: 30,
-                            backgroundColor: Colors.blue.shade100,
-                            child: const Icon(Icons.person, size: 30, color: Colors.blue),
+                                      final request = JoinTripRequest(
+                                        tripId: trip.tripId ?? '',
+                                        passengerId: passengerId,
+                                        driverId: trip.driverId,
+                                        pickupPoint: trip.sourceAddress,
+                                        destinationPoint: trip.destinationAddress,
+                                        rideStartTime: trip.tripStartDateTime.toUtc().toIso8601String(),
+                                        requestedSeats: 1,
+                                      );
+
+                                      await joinNotifier.joinTrip(request);
+                                      final state = ref.read(joinTripProvider);
+                                      state.when(
+                                        data: (booking) {
+                                          Navigator.pop(ctx);
+                                          if (booking != null && context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text('Trip booked successfully!'),
+                                                backgroundColor: Colors.green,
+                                              ),
+                                            );
+                                          }
+                                        },
+                                        error: (error, stack) {
+                                          Navigator.pop(ctx);
+                                          if (context.mounted) {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(content: Text('Failed to book trip: $error')),
+                                            );
+                                          }
+                                        },
+                                        loading: () {},
+                                      );
+                                    },
+                                    child: const Text('Book'),
+                                  ),
+                                ],
+                              )
+                            ],
                           ),
-                        ),
-                        title: Text(
-                          '${tripData['from']} → ${tripData['to']}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          'Date: $formattedDate | €$price | $seats seat(s)',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        trailing: IconButton(
-                          icon: Icon(
-                            isFavorite ? Icons.favorite : Icons.favorite_outline,
-                            color: isFavorite ? Colors.red : Colors.grey,
-                          ),
-                          onPressed: () => _toggleFavorite(tripId),
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => TripDetailsPage(
-                                tripId: tripId,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                        );
+                      },
                     );
                   },
-                  childCount: trips.length,
                 ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );

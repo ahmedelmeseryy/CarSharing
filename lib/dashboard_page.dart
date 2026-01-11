@@ -19,6 +19,13 @@ class _DashboardPageState extends State<DashboardPage> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              Navigator.pushNamed(context, '/api-debug');
+            },
+            tooltip: 'API Debug Console',
+          ),
+          IconButton(
             icon: const Icon(Icons.person_outline),
             onPressed: () {
               Navigator.pushNamed(context, '/profile');

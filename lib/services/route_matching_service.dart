@@ -1,5 +1,7 @@
 import 'dart:math';
-import 'package:cloud_firestore/cloud_firestore.dart';
+
+// Deprecated: Firebase-based route matching has been replaced by REST search endpoints.
+// Kept for reference only; no longer used in user flows.
 
 class RouteMatch {
   final String tripId;

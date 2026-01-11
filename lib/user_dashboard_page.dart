@@ -1,31 +1,49 @@
 import 'package:flutter/material.dart';
-import 'package:carsharing/pages/user/tabs/available_trips_tab.dart';
-import 'package:carsharing/pages/user/trip_details_page.dart';
-import 'package:carsharing/pages/user/trip_search_page.dart';
-import 'package:carsharing/main.dart'; // For ProfilePage
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/services.dart';
-import 'dart:convert';
-import 'package:carsharing/ride_detail_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:carsharing/pages/user/tabs/available_trips_tab.dart';
+import 'package:carsharing/pages/user/trip_search_page.dart';
+import 'package:carsharing/pages/user/trip_search_test_page.dart';
+import 'package:carsharing/main.dart'; // For ProfilePage
+import 'package:carsharing/core/providers/app_providers.dart';
+import 'package:carsharing/features/booking/data/models/booking_response.dart';
 
 class UserDashboardPage extends StatefulWidget {
-  const UserDashboardPage({super.key});
+  final int initialIndex;
+  
+  const UserDashboardPage({super.key, this.initialIndex = 0});
 
   @override
   _UserDashboardPageState createState() => _UserDashboardPageState();
 }
 
 class _UserDashboardPageState extends State<UserDashboardPage> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
   String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
 
   Widget _getAvailableTripsWidget() {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Available Trips'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: 'Debug Search',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TripSearchTestPage(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'Advanced Search',
@@ -126,274 +144,252 @@ class _UserDashboardPageState extends State<UserDashboardPage> {
   }
 }
 
-class BookedTripsPage extends StatefulWidget {
+class BookedTripsPage extends ConsumerStatefulWidget {
   const BookedTripsPage({super.key});
 
   @override
-  State<BookedTripsPage> createState() => _BookedTripsPageState();
+  ConsumerState<BookedTripsPage> createState() => _BookedTripsPageState();
 }
 
-class _BookedTripsPageState extends State<BookedTripsPage> {
-  final user = FirebaseAuth.instance.currentUser;
-
-  Stream<QuerySnapshot> _getBookedTripsStream() {
-    if (user == null) {
-      print('User not logged in for bookings');
-      return Stream.empty();
-    }
-    print('Loading bookings for user: ${user!.uid}');
-    return FirebaseFirestore.instance
-        .collection('bookings')
-        .where('userId', isEqualTo: user!.uid)
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-  }
-
+class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
   @override
   Widget build(BuildContext context) {
+    final tokenStorage = ref.read(secureStorageProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Booked Trips'),
       ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _getBookedTripsStream(),
+      body: FutureBuilder<String?>(
+        future: tokenStorage.getUserId(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+
+          final userId = snapshot.data;
+          if (userId == null || userId.isEmpty) {
             return const Center(
-              child: Text(
-                'You have no booked trips yet.',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
+              child: Text('Log in to view your bookings.'),
             );
           }
 
-          final bookings = snapshot.data!.docs;
+          print('🔍 DEBUG: Fetching bookings for userId: $userId');
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: bookings.length,
-            itemBuilder: (context, index) {
-              final booking = bookings[index];
-              final bookingData = booking.data() as Map<String, dynamic>;
-              
-              String formattedDate = 'N/A';
-              if (bookingData['createdAt'] is Timestamp) {
-                formattedDate = DateFormat.yMd().format((bookingData['createdAt'] as Timestamp).toDate());
-              }
+          final bookingsAsync = ref.watch(
+            getUpcomingBookingsForPassengerProvider(userId),
+          );
+          
+          // Get local cached bookings (workaround for backend issue)
+          final localBookings = ref.watch(localBookingsCacheProvider(userId));
 
-              String tripDate = 'N/A';
-              if (bookingData['tripDate'] is Timestamp) {
-                tripDate = DateFormat.yMd().format((bookingData['tripDate'] as Timestamp).toDate());
-              }
-
-              return Card(
-                elevation: 2,
-                margin: const EdgeInsets.only(bottom: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: CircleAvatar(
-                    radius: 30,
-                    backgroundColor: Colors.blue.shade100,
-                    child: const Icon(Icons.person, size: 30, color: Colors.blue),
-                  ),
-                  title: Text(
-                    '${bookingData['tripFrom']} to ${bookingData['tripTo']}',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Booked: $formattedDate'),
-                      Text('Trip Date: $tripDate'),
-                      Text('Seats: ${bookingData['seats']} - Total: €${bookingData['totalPrice']}'),
-                      Text('Payment: ${bookingData['paymentMethod']}'),
-                    ],
-                  ),
-                  trailing: _buildStatusChip(bookingData['status'] ?? 'pending'),
-                  isThreeLine: true,
-                  onTap: () => _showBookingDetails(bookingData),
+          return bookingsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) {
+              print('❌ ERROR fetching bookings: $err');
+              print('📍 Stack: $stack');
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text('Error: $err'),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        ref.invalidate(
+                            getUpcomingBookingsForPassengerProvider(userId));
+                      },
+                      child: const Text('Retry'),
+                    ),
+                  ],
                 ),
               );
             },
-          );
-        },
-      ),
-    );
-  }
+            data: (data) {
+              var bookings = (data as List).cast<PassengerRideResponse>();
+              
+              // Merge with local bookings (workaround for backend issue)
+              bookings = [...bookings, ...localBookings];
+              
+              print('✅ DEBUG: Received ${bookings.length} bookings (${(data as List).length} from API + ${localBookings.length} from cache)');
+              if (bookings.isNotEmpty) {
+                print('📌 First booking: ${bookings[0].tripId}');
+              }
 
-  Widget _buildStatusChip(String status) {
-    Color color;
-    String text;
-    
-    switch (status.toLowerCase()) {
-      case 'confirmed':
-        color = Colors.green;
-        text = 'Confirmed';
-        break;
-      case 'pending':
-        color = Colors.orange;
-        text = 'Pending';
-        break;
-      case 'cancelled':
-        color = Colors.red;
-        text = 'Cancelled';
-        break;
-      default:
-        color = Colors.grey;
-        text = 'Unknown';
-    }
-
-    return Chip(
-      label: Text(
-        text,
-        style: const TextStyle(color: Colors.white, fontSize: 12),
-      ),
-      backgroundColor: color,
-    );
-  }
-
-  void _showBookingDetails(Map<String, dynamic> bookingData) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Booking Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Trip: ${bookingData['tripFrom']} to ${bookingData['tripTo']}'),
-            Text('Seats: ${bookingData['seats']}'),
-            Text('Total Price: €${bookingData['totalPrice']}'),
-            Text('Payment Method: ${bookingData['paymentMethod'] ?? 'N/A'}'),
-            Text('Status: ${bookingData['status'] ?? 'pending'}'),
-            if (bookingData['createdAt'] is Timestamp)
-              Text('Booked: ${DateFormat.yMd().add_jm().format((bookingData['createdAt'] as Timestamp).toDate())}'),
-            if (bookingData['tripDate'] is Timestamp)
-              Text('Trip Date: ${DateFormat.yMd().add_jm().format((bookingData['tripDate'] as Timestamp).toDate())}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class FavoriteTripsPage extends StatefulWidget {
-  const FavoriteTripsPage({super.key});
-
-  @override
-  _FavoriteTripsPageState createState() => _FavoriteTripsPageState();
-}
-
-class _FavoriteTripsPageState extends State<FavoriteTripsPage> {
-  final user = FirebaseAuth.instance.currentUser;
-
-  Stream<List<dynamic>> _getFavoriteTripsStream() {
-    if (user == null) {
-      return Stream.value([]);
-    }
-
-    final userDocStream = FirebaseFirestore.instance.collection('users').doc(user!.uid).snapshots();
-
-    return userDocStream.asyncMap((userDoc) async {
-      if (!userDoc.exists || userDoc.data()!['favorite_trips'] == null) {
-        return [];
-      }
-      final List<String> favoriteTripIds = List<String>.from(userDoc.data()!['favorite_trips']);
-      if (favoriteTripIds.isEmpty) {
-        return [];
-      }
-      
-      // Fetch from Firestore trips collection
-      final firestoreTripsSnapshot = await FirebaseFirestore.instance.collection('trips').get();
-      final List<dynamic> firestoreTrips = firestoreTripsSnapshot.docs.map((doc) => doc.data()..['id'] = doc.id).toList();
-      
-      return firestoreTrips.where((trip) {
-        final tripId = trip['id'] ?? '${trip['from']}-${trip['to']}';
-        return favoriteTripIds.contains(tripId);
-      }).toList();
-    });
-  }
-  
-  String _getTripId(dynamic trip) {
-    return trip['id'] ?? '${trip['from']}-${trip['to']}';
-  }
-  
-  void _toggleFavorite(String tripId) {
-    if (user == null) return;
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user!.uid);
-    userRef.update({
-      'favorite_trips': FieldValue.arrayRemove([tripId])
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Favorite Trips'),
-      ),
-      body: StreamBuilder<List<dynamic>>(
-        stream: _getFavoriteTripsStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                'You have no favorite trips yet.',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-            );
-          }
-
-          final favoriteTrips = snapshot.data!;
-
-          return ListView.builder(
-            itemCount: favoriteTrips.length,
-            itemBuilder: (context, index) {
-              final trip = favoriteTrips[index];
-              final tripId = _getTripId(trip);
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text('${trip['from']} to ${trip['to']}'),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('€${trip['price']} - ${trip['date']}'),
-                      Text('Driver: ${trip['driverName'] ?? 'Unknown'}'),
-                    ],
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.favorite, color: Colors.red),
-                        onPressed: () => _toggleFavorite(tripId),
+              if (bookings.isEmpty) {
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.invalidate(
+                        getUpcomingBookingsForPassengerProvider(userId));
+                  },
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 80),
+                      Center(
+                        child: Text(
+                          'You have no booked trips yet.',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
                       ),
-                      const Icon(Icons.arrow_forward_ios),
                     ],
                   ),
-                  onTap: () {
-                    // Navigate to trip details page using the trip ID
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TripDetailsPage(tripId: trip['id'] ?? ''),
+                );
+              }
+
+              return RefreshIndicator(
+                onRefresh: () async {
+                  ref.invalidate(
+                      getUpcomingBookingsForPassengerProvider(userId));
+                },
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: bookings.length,
+                  itemBuilder: (context, index) {
+                    final booking = bookings[index];
+                    final parsedTripDate =
+                        DateTime.tryParse(booking.tripStartDateTime);
+                    final tripDate = parsedTripDate != null
+                        ? DateFormat.yMd()
+                            .add_Hm()
+                            .format(parsedTripDate.toLocal())
+                        : booking.tripStartDateTime;
+                    final fare = booking.estimatedFare.toStringAsFixed(2);
+
+                    return Card(
+                      elevation: 2,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Route
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on,
+                                    color: Colors.green, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    booking.pickupLocation.placeAddress ??
+                                        'From',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.flag,
+                                    color: Colors.red, size: 20),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    booking.dropoffLocation.placeAddress ??
+                                        'To',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 16),
+                            // Booking details
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Date & Time',
+                                      style: TextStyle(
+                                          color: Colors.grey, fontSize: 12),
+                                    ),
+                                    Text(
+                                      tripDate,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Seats',
+                                      style: TextStyle(
+                                          color: Colors.grey, fontSize: 12),
+                                    ),
+                                    Text(
+                                      '${booking.bookedSeats}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Price',
+                                      style: TextStyle(
+                                          color: Colors.grey, fontSize: 12),
+                                    ),
+                                    Text(
+                                      '€$fare',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green.shade700,
+                                          fontSize: 16),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            // Status
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: booking.isActive
+                                    ? Colors.blue.shade50
+                                    : Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: booking.isActive
+                                      ? Colors.blue.shade300
+                                      : Colors.grey.shade300,
+                                ),
+                              ),
+                              child: Text(
+                                booking.statusLabel,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: booking.isActive
+                                      ? Colors.blue.shade700
+                                      : Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -405,4 +401,26 @@ class _FavoriteTripsPageState extends State<FavoriteTripsPage> {
       ),
     );
   }
-} 
+}
+
+class FavoriteTripsPage extends StatelessWidget {
+  const FavoriteTripsPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Favorite Trips'),
+      ),
+      body: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: Text(
+            'Favorites are temporarily disabled while the app uses REST. This will return once a REST endpoint for favorites is available.',
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ),
+    );
+  }
+}

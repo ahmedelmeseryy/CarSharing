@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
 import 'ride_detail_page.dart';
 import 'package:carsharing/widgets/trip_card.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carsharing/services/places_service.dart';
 import 'package:carsharing/services/trip_search_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:carsharing/core/providers/app_providers.dart';
+import 'package:carsharing/features/trip/data/models/trip.dart';
 
-class RideListPage extends StatefulWidget {
+class RideListPage extends ConsumerStatefulWidget {
   final String? searchQuery;
 
   const RideListPage({super.key, this.searchQuery});
 
   @override
-  State<RideListPage> createState() => _RideListPageState();
+  ConsumerState<RideListPage> createState() => _RideListPageState();
 }
 
-class _RideListPageState extends State<RideListPage> {
-  List<dynamic> allRides = [];
-  List<dynamic> filteredRides = [];
+class _RideListPageState extends ConsumerState<RideListPage> {
+  List<Trip> allRides = [];
+  List<Trip> filteredRides = [];
   List<TripWithDistance> distanceFilteredRides = [];
   Set<String> favoriteRides = {}; // Store favorite ride IDs
   bool isLoading = true;
@@ -28,99 +30,104 @@ class _RideListPageState extends State<RideListPage> {
   final TextEditingController _pickupLocationController = TextEditingController();
   final TextEditingController _destinationLocationController = TextEditingController();
 
+  double? _searchSourceLat;
+  double? _searchSourceLon;
+  double? _searchDestLat;
+  double? _searchDestLon;
+
+  String _getRideId(Trip ride) {
+    return ride.tripId ?? '${ride.sourceAddress.placeAddress}-${ride.destinationAddress.placeAddress}';
+  }
+
+  Map<String, dynamic> _tripToMap(Trip trip) {
+    return {
+      'id': trip.tripId,
+      'tripId': trip.tripId,
+      'driverId': trip.driverId,
+      'vehicleNumber': trip.vehicleNumber,
+      'from': trip.sourceAddress.placeAddress,
+      'to': trip.destinationAddress.placeAddress,
+      'fromAddress': trip.sourceAddress.placeAddress,
+      'toAddress': trip.destinationAddress.placeAddress,
+      'fromLatitude': trip.sourceAddress.latitude,
+      'fromLongitude': trip.sourceAddress.longitude,
+      'toLatitude': trip.destinationAddress.latitude,
+      'toLongitude': trip.destinationAddress.longitude,
+      'sourceLatitude': trip.sourceAddress.latitude,
+      'sourceLongitude': trip.sourceAddress.longitude,
+      'destinationLatitude': trip.destinationAddress.latitude,
+      'destinationLongitude': trip.destinationAddress.longitude,
+      'seats': trip.availableSeats,
+      'offeredSeats': trip.offeredSeat,
+      'availableSeats': trip.availableSeats,
+      'price': trip.estimatedFare,
+      'date': trip.tripStartDateTime,
+      'tripStartDateTime': trip.tripStartDateTime,
+      'tripStatus': trip.tripStatus,
+      'routeDistance': trip.routeDistance,
+      'routeDuration': trip.routeDuration,
+    };
+  }
+
   @override
   void initState() {
     super.initState();
     _searchController.text = widget.searchQuery ?? '';
-    loadRides();
-    _loadFavorites();
-  }
-
-  Future<void> _loadFavorites() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      return;
+    // Load initial trips if search query is provided
+    if (widget.searchQuery != null && widget.searchQuery!.isNotEmpty) {
+      _filterRides();
     }
-    
-    try {
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      
-      if (userDoc.exists) {
-        final favoriteTripIds = userDoc.data()?['favorite_trips'] as List<dynamic>?;
-        if (favoriteTripIds != null) {
-          setState(() {
-            favoriteRides = Set<String>.from(
-              favoriteTripIds.map((id) => id.toString())
-            );
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading favorites: $e');
-    }
-  }
-
-  void _toggleFavorite(String rideId) {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You must be logged in to add favorites.')),
-      );
-      return;
-    }
-
-    final userRef = FirebaseFirestore.instance.collection('users').doc(user.uid);
-
-    setState(() {
-      if (favoriteRides.contains(rideId)) {
-        favoriteRides.remove(rideId);
-        userRef.update({
-          'favorite_trips': FieldValue.arrayRemove([rideId])
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Removed from favorites')),
-        );
-      } else {
-        favoriteRides.add(rideId);
-        userRef.update({
-          'favorite_trips': FieldValue.arrayUnion([rideId])
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Added to favorites')),
-        );
-      }
-    });
-  }
-
-  String _getRideId(dynamic ride) {
-    // Use Firestore document ID if available, otherwise construct one
-    return ride['id'] ?? '${ride['start']}-${ride['end']}';
   }
 
   Future<void> loadRides() async {
+    // For now, we need coordinates to search. This method will be called
+    // after user sets pickup/destination locations
+    if (_searchSourceLat == null || _searchSourceLon == null ||
+        _searchDestLat == null || _searchDestLon == null) {
+      setState(() {
+        allRides = [];
+        filteredRides = [];
+        isLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       isLoading = true;
     });
+
     try {
-      final firestoreRidesSnapshot = await FirebaseFirestore.instance.collection('rides').get();
-      final List<dynamic> firestoreRides = firestoreRidesSnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
+      final user = FirebaseAuth.instance.currentUser;
+      final tokenStorage = ref.read(secureStorageProvider);
+      final userId = await tokenStorage.getUserId() ?? user?.uid;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('Missing user id for matching-route search');
+      }
+      final rideStartTime = DateTime.now().toUtc().toIso8601String();
+      const requestedSeats = 1;
+      final searchResults = await ref.read(searchMatchingRouteProvider((
+        sourceLat: _searchSourceLat!,
+        sourceLon: _searchSourceLon!,
+        sourceRadiusKm: selectedPickupRadius,
+        destLat: _searchDestLat!,
+        destLon: _searchDestLon!,
+        destRadiusKm: selectedDestinationRadius,
+        requestedSeats: requestedSeats,
+        rideStartTime: rideStartTime,
+        effectiveUserId: userId,
+      )).future);
 
       setState(() {
-        allRides = firestoreRides;
+        allRides = searchResults.cast<Trip>();
         _filterRides();
         isLoading = false;
       });
     } catch (e) {
-      // Handle error, maybe show a message to the user
       // ignore: avoid_print
-      print("Error loading rides from Firestore: $e");
+      print("Error loading rides from API: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error searching for trips: $e')),
+      );
       setState(() {
         allRides = [];
         filteredRides = [];
@@ -139,8 +146,8 @@ class _RideListPageState extends State<RideListPage> {
     } else {
       setState(() {
         filteredRides = allRides.where((ride) {
-          final start = ride['start'].toString().toLowerCase();
-          final end = ride['end'].toString().toLowerCase();
+          final start = (ride.sourceAddress.placeAddress ?? '').toLowerCase();
+          final end = (ride.destinationAddress.placeAddress ?? '').toLowerCase();
           return start.contains(query) || end.contains(query);
         }).toList();
         searchMode = 0;
@@ -175,22 +182,20 @@ class _RideListPageState extends State<RideListPage> {
         return;
       }
 
-      final results = TripSearchService.filterAndRankByDistance(
-        allRides,
-        userLocation.latitude,
-        userLocation.longitude,
-        radiusKm: selectedPickupRadius,
-      );
-
       setState(() {
-        distanceFilteredRides = results;
-        searchMode = 1;
-        isLoading = false;
+        _searchSourceLat = userLocation.latitude;
+        _searchSourceLon = userLocation.longitude;
       });
 
-      if (results.isEmpty) {
+      // If we also have destination, trigger full search
+      if (_searchDestLat != null && _searchDestLon != null) {
+        await loadRides();
+      } else {
+        setState(() {
+          isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No trips found within ${selectedPickupRadius.toStringAsFixed(1)} km')),
+          const SnackBar(content: Text('Please also enter a destination location')),
         );
       }
     } catch (e) {
@@ -232,22 +237,20 @@ class _RideListPageState extends State<RideListPage> {
         return;
       }
 
-      final results = TripSearchService.filterAndRankByDestinationDistance(
-        allRides,
-        destLocation.latitude,
-        destLocation.longitude,
-        radiusKm: selectedDestinationRadius,
-      );
-
       setState(() {
-        distanceFilteredRides = results;
-        searchMode = 2;
-        isLoading = false;
+        _searchDestLat = destLocation.latitude;
+        _searchDestLon = destLocation.longitude;
       });
 
-      if (results.isEmpty) {
+      // If we also have source, trigger full search
+      if (_searchSourceLat != null && _searchSourceLon != null) {
+        await loadRides();
+      } else {
+        setState(() {
+          isLoading = false;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No trips found within ${selectedDestinationRadius.toStringAsFixed(1)} km of destination')),
+          const SnackBar(content: Text('Please also enter a pickup location')),
         );
       }
     } catch (e) {
@@ -556,14 +559,14 @@ class _RideListPageState extends State<RideListPage> {
                               final isFavorite = favoriteRides.contains(rideId);
 
                               return TripCard(
-                                ride: Map<String, dynamic>.from(ride),
+                                ride: _tripToMap(ride),
                                 isFavorite: isFavorite,
-                                onFavoriteToggle: () => _toggleFavorite(rideId),
+                                onFavoriteToggle: () {}, // Favorites disabled for REST
                                 onTap: () {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => RideDetailPage(ride: ride),
+                                      builder: (context) => RideDetailPage(ride: _tripToMap(ride)),
                                     ),
                                   );
                                 },
@@ -605,53 +608,8 @@ class _RideListPageState extends State<RideListPage> {
                             padding: const EdgeInsets.symmetric(horizontal: 8.0),
                             itemCount: distanceFilteredRides.length,
                             itemBuilder: (context, index) {
-                              final tripWithDistance = distanceFilteredRides[index];
-                              final ride = tripWithDistance.trip;
-                              final rideId = _getRideId(ride);
-                              final isFavorite = favoriteRides.contains(rideId);
-
-                              return Stack(
-                                children: [
-                                  TripCard(
-                                    ride: Map<String, dynamic>.from(ride),
-                                    isFavorite: isFavorite,
-                                    onFavoriteToggle: () => _toggleFavorite(rideId),
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => RideDetailPage(ride: ride),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  // Distance badge
-                                  Positioned(
-                                    top: 12,
-                                    right: 12,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.blue,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: Text(
-                                        TripSearchService.formatDistance(
-                                          tripWithDistance.distanceKm,
-                                        ),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              );
+                              // Distance-based local filtering disabled - REST API handles distance filtering
+                              return const SizedBox.shrink();
                             },
                           )),
           ),

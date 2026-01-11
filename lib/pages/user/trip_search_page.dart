@@ -1,19 +1,21 @@
 import 'package:carsharing/widgets/address_autocomplete_field.dart';
-import 'package:carsharing/services/route_matching_service.dart';
-import 'package:carsharing/pages/user/trip_search_results_page.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:carsharing/core/providers/app_providers.dart';
+import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/widgets/map_location_picker.dart';
 import 'package:carsharing/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:carsharing/pages/user/trip_search_results_page.dart';
 
-class TripSearchPage extends StatefulWidget {
+class TripSearchPage extends ConsumerStatefulWidget {
   const TripSearchPage({super.key});
 
   @override
-  State<TripSearchPage> createState() => _TripSearchPageState();
+  ConsumerState<TripSearchPage> createState() => _TripSearchPageState();
 }
 
-class _TripSearchPageState extends State<TripSearchPage> {
+class _TripSearchPageState extends ConsumerState<TripSearchPage> {
   final _fromController = TextEditingController();
   final _toController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -25,6 +27,8 @@ class _TripSearchPageState extends State<TripSearchPage> {
   
   DateTime? _selectedDate;
   final _dateController = TextEditingController();
+  TimeOfDay? _selectedTime;
+  final _timeController = TextEditingController();
   
   // Advanced search filters
   double _minPrice = 0;
@@ -32,12 +36,15 @@ class _TripSearchPageState extends State<TripSearchPage> {
   double _selectedMinPrice = 0;
   double _selectedMaxPrice = 500;
   int _selectedSeats = 1;
+  double _sourceRadiusKm = 10;
+  double _destRadiusKm = 10;
 
   @override
   void dispose() {
     _fromController.dispose();
     _toController.dispose();
     _dateController.dispose();
+    _timeController.dispose();
     super.dispose();
   }
 
@@ -52,6 +59,20 @@ class _TripSearchPageState extends State<TripSearchPage> {
       setState(() {
         _selectedDate = picked;
         _dateController.text = DateFormat.yMd().format(_selectedDate!);
+      });
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedTime = picked;
+        final local = DateTime(0, 1, 1, picked.hour, picked.minute);
+        _timeController.text = DateFormat.Hm().format(local);
       });
     }
   }
@@ -76,74 +97,94 @@ class _TripSearchPageState extends State<TripSearchPage> {
       );
 
       try {
-        List<RouteMatch> matches = [];
-
-        // Check if we have coordinates from autocomplete selection
-        if (_fromLatitude != null && _fromLongitude != null &&
-            _toLatitude != null && _toLongitude != null) {
-          print('[SEARCH] Using coordinate-based search');
-          // Find matching trips using coordinates
-          matches = await RouteMatchingService.findMatchingTrips(
-            userFromLat: _fromLatitude!,
-            userFromLng: _fromLongitude!,
-            userToLat: _toLatitude!,
-            userToLng: _toLongitude!,
-            preferredDate: _selectedDate,
-            searchRadius: 10.0, // 10 km radius
+        if (_fromLatitude == null || _fromLongitude == null || _toLatitude == null || _toLongitude == null) {
+          if (!context.mounted) return;
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select locations from the autocomplete or map to search.'),
+              backgroundColor: Colors.orange,
+            ),
           );
-        } else {
-          print('[SEARCH] Coordinates not available, using text-based search');
-          // Fallback: Use text-based search by city names
-          matches = await RouteMatchingService.findMatchingTripsByName(
-            fromCity: _fromController.text,
-            toCity: _toController.text,
-            preferredDate: _selectedDate,
-          );
+          return;
         }
 
-        // Apply filters to the matches
-        final filteredMatches = matches.where((match) {
-          // Filter by price
-          final tripPrice = double.tryParse(match.tripData['price'].toString()) ?? 0;
-          if (tripPrice < _selectedMinPrice || tripPrice > _selectedMaxPrice) {
+        final tokenStorage = ref.read(secureStorageProvider);
+        final userId = await tokenStorage.getUserId();
+        if (userId == null || userId.isEmpty) {
+          if (!context.mounted) return;
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Could not determine user id. Please re-login.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        final baseDate = _selectedDate ?? DateTime.now();
+        final baseTime = _selectedTime ?? TimeOfDay.now();
+        final combinedLocal = DateTime(
+          baseDate.year,
+          baseDate.month,
+          baseDate.day,
+          baseTime.hour,
+          baseTime.minute,
+        );
+        final rideStartIso = combinedLocal.toUtc().toIso8601String();
+
+        final repository = ref.read(tripRepositoryProvider);
+        final trips = await repository.searchMatchingRoute(
+          sourceLat: _fromLatitude!,
+          sourceLon: _fromLongitude!,
+          sourceRadiusKm: _sourceRadiusKm,
+          destLat: _toLatitude!,
+          destLon: _toLongitude!,
+          destRadiusKm: _destRadiusKm,
+          requestedSeats: _selectedSeats,
+          rideStartTime: rideStartIso,
+          effectiveUserId: userId,
+        );
+
+        // Filter by price range and seats
+        final filtered = trips.where((trip) {
+          final fare = trip.estimatedFare;
+          if (fare < _selectedMinPrice || fare > _selectedMaxPrice) {
             return false;
           }
-          
-          // Filter by available seats (use 'seats' field, not 'availableSeats')
-          final availableSeats = int.tryParse(match.tripData['seats'].toString()) ?? 0;
-          if (availableSeats < _selectedSeats) {
+          if (trip.availableSeats < _selectedSeats) {
             return false;
           }
-          
           return true;
         }).toList();
 
         if (!context.mounted) return;
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
 
-        if (filteredMatches.isEmpty) {
+        if (filtered.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('No matching trips found. Try adjusting your search or filters.'),
               backgroundColor: Colors.orange,
             ),
           );
-        } else {
-          // Navigate to results page
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TripSearchResultsPage(
-                matches: filteredMatches,
-                searchFrom: _fromController.text,
-                searchTo: _toController.text,
-              ),
-            ),
-          );
+          return;
         }
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TripSearchResultsPage(
+              trips: filtered,
+              searchFrom: _fromController.text,
+              searchTo: _toController.text,
+            ),
+          ),
+        );
       } catch (e) {
         if (!context.mounted) return;
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error searching trips: $e'),
@@ -282,6 +323,20 @@ class _TripSearchPageState extends State<TripSearchPage> {
                 readOnly: true,
                 onTap: _selectDate,
               ),
+
+              const SizedBox(height: 12),
+
+              // Time Selection
+              TextFormField(
+                controller: _timeController,
+                decoration: const InputDecoration(
+                  labelText: 'Travel Time (Optional)',
+                  border: OutlineInputBorder(),
+                  suffixIcon: Icon(Icons.access_time),
+                ),
+                readOnly: true,
+                onTap: _selectTime,
+              ),
               
               const SizedBox(height: 24),
               
@@ -327,6 +382,35 @@ class _TripSearchPageState extends State<TripSearchPage> {
                         onChanged: (double value) {
                           setState(() {
                             _selectedSeats = value.toInt();
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Radius filters
+                      Text('Source radius: ${_sourceRadiusKm.toStringAsFixed(1)} km'),
+                      Slider(
+                        value: _sourceRadiusKm,
+                        min: 1,
+                        max: 500,
+                        divisions: 499,
+                        onChanged: (double value) {
+                          setState(() {
+                            _sourceRadiusKm = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text('Destination radius: ${_destRadiusKm.toStringAsFixed(1)} km'),
+                      Slider(
+                        value: _destRadiusKm,
+                        min: 1,
+                        max: 500,
+                        divisions: 499,
+                        onChanged: (double value) {
+                          setState(() {
+                            _destRadiusKm = value;
                           });
                         },
                       ),

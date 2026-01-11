@@ -53,7 +53,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
   void dispose() {
     _debounce?.cancel();
     _focusNode.dispose();
-    _hideSuggestions();
+    _hideSuggestions(force: true); // avoid setState after dispose
     super.dispose();
   }
   Future<void> _onTextChanged(String value) async {
@@ -159,11 +159,16 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
     });
   }
 
-  void _hideSuggestions() {
+  void _hideSuggestions({bool force = false}) {
     print('[OVERLAY] _hideSuggestions called');
-    setState(() {
+    if (!mounted && !force) return;
+    if (mounted) {
+      setState(() {
+        _showSuggestions = false;
+      });
+    } else {
       _showSuggestions = false;
-    });
+    }
   }
 
   @override

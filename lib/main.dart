@@ -1,21 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'firebase_options.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/storage/secure_storage.dart';
 import 'dashboard_page.dart';
 import 'user_dashboard_page.dart';
 import 'driver_dashboard_page.dart';
 import 'ride_list_page.dart';
+import 'core/pages/api_debug_screen.dart';
+import 'rest_integration_tester.dart';
+import 'core/storage/secure_storage.dart';
+import 'features/auth/data/services/auth_api_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MainApp());
+  runApp(
+    const ProviderScope(
+      child: MainApp(),
+    ),
+  );
 }
 
 class MainApp extends StatelessWidget {
@@ -70,6 +80,8 @@ class MainApp extends StatelessWidget {
         '/driver-dashboard': (context) => const DriverDashboardPage(),
         '/rides': (context) => const RideListPage(),
         '/profile': (context) => const ProfilePage(),
+        '/api-debug': (context) => const ApiDebugScreen(),
+        '/rest-integration': (context) => const RestIntegrationTester(),
       },
     );
   }
@@ -206,58 +218,79 @@ class _SignUpPageState extends State<SignUpPage> {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
       try {
-        final credential = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(
+        // Create user with Firebase Auth
+        final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
           email: _mailController.text.trim(),
           password: _passwordController.text.trim(),
         );
-        await _saveUserProfile();
-        if (!credential.user!.emailVerified) {
-          await credential.user!.sendEmailVerification();
+
+        final user = userCredential.user;
+        if (user == null) throw Exception('Failed to create user');
+
+        // Save user data to Firestore
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+          'email': _mailController.text.trim(),
+          'name': _nameController.text.trim(),
+          'surname': _surnameController.text.trim(),
+          'age': _ageController.text.trim(),
+          'phone': _phoneController.text.trim(),
+          'role': _selectedRole,
+          'createdAt': FieldValue.serverTimestamp(),
+          if (_selectedRole == 'driver') ...{
+            'car_model': _carModelController.text.trim(),
+            'car_color': _carColorController.text.trim(),
+            'car_year': _carYearController.text.trim(),
+            'license_number': _licenseNumberController.text.trim(),
+          },
+        });
+        
+        print('✅ REGISTRATION: User created with role: $_selectedRole');
+
+        // Get Firebase ID token for REST API authorization
+        final idToken = await user.getIdToken();
+        if (idToken == null || idToken.isEmpty) {
+          throw Exception('Failed to get authentication token');
         }
-    Navigator.pushReplacementNamed(context, '/verify-email');
-      } on FirebaseAuthException catch (e) {
+        
+        // Store token and user info in secure storage for REST API calls
+        await TokenStorage().saveTokens(
+          accessToken: idToken,
+          refreshToken: idToken,
+          userId: user.uid,
+          userRole: _selectedRole,
+        );
+
+        if (!mounted) return;
+        
+        setState(() => _isLoading = false);
+        
+        // Navigate to appropriate dashboard based on role
+        if (_selectedRole == 'driver') {
+          Navigator.pushReplacementNamed(context, '/driver-dashboard');
+        } else {
+          Navigator.pushReplacementNamed(context, '/user-dashboard');
+        }
+      } catch (e) {
+        if (!mounted) return;
+        
+        setState(() => _isLoading = false);
         String message = 'Registration failed';
-        if (e.code == 'email-already-in-use') {
+        
+        if (e.toString().contains('email-already-in-use')) {
           message = 'Email already in use';
-        } else if (e.code == 'weak-password') {
+        } else if (e.toString().contains('weak-password')) {
           message = 'Password is too weak';
+        } else if (e.toString().contains('invalid-email')) {
+          message = 'Invalid email address';
+        } else if (e.toString().contains('network')) {
+          message = 'Network error. Please check your connection.';
         }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
-      } finally {
-        setState(() => _isLoading = false);
       }
     }
-  }
-
-  Future<void> _saveUserProfile() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    
-    final userData = {
-      'name': _nameController.text.trim(),
-      'surname': _surnameController.text.trim(),
-      'age': _ageController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'email': _mailController.text.trim(),
-      'role': _selectedRole,
-    };
-
-    // Add driver-specific fields if role is driver
-    if (_selectedRole == 'driver') {
-      userData['car_model'] = _carModelController.text.trim();
-      userData['car_color'] = _carColorController.text.trim();
-      userData['car_year'] = _carYearController.text.trim();
-      userData['license_number'] = _licenseNumberController.text.trim();
-      userData['is_verified'] = 'false'; // Driver verification status
-    }
-
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .set(userData);
   }
 
   @override
@@ -476,168 +509,122 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailOrPhoneController =
-      TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _otpController = TextEditingController();
   bool _isLoading = false;
-  bool _isPhone = false;
-  String? _verificationId;
-  bool _otpSent = false;
-
-  void _onInputChanged(String value) {
-    setState(() {
-      _isPhone = _isPhoneNumber(value);
-      _otpSent = false;
-    });
-  }
-
-  bool _isPhoneNumber(String input) {
-    final phoneReg = RegExp(r'^(\+?\d{10,15})');
-    return phoneReg.hasMatch(input.trim());
-  }
 
   Future<void> _login() async {
     setState(() => _isLoading = true);
-    final input = _emailOrPhoneController.text.trim();
-    if (_isPhone) {
-      if (!_otpSent) {
-        await FirebaseAuth.instance.verifyPhoneNumber(
-          phoneNumber: input,
-          verificationCompleted: (PhoneAuthCredential credential) async {
-            await FirebaseAuth.instance.signInWithCredential(credential);
-            Navigator.pushReplacementNamed(context, '/dashboard');
-          },
-          verificationFailed: (FirebaseAuthException e) {
-            setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text(
-                      'Phone verification failed: ${e.message}')),
-            );
-          },
-          codeSent: (String verificationId, int? resendToken) {
-            setState(() {
-              _verificationId = verificationId;
-              _otpSent = true;
-              _isLoading = false;
-            });
-          },
-          codeAutoRetrievalTimeout: (String verificationId) {
-            setState(() {
-              _verificationId = verificationId;
-              _isLoading = false;
-            });
-          },
-        );
+    final email = _emailController.text.trim();
+    
+    try {
+      // Login with Firebase Auth
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: _passwordController.text.trim(),
+      );
+
+      final user = userCredential.user;
+      if (user == null) throw Exception('Failed to get user after login');
+
+      // Get Firebase ID token for REST API authorization
+      final idToken = await user.getIdToken();
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Failed to get authentication token');
+      }
+      
+      // Get user role from Firestore
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userData = userDoc.data();
+      final role = userData?['role'] as String? ?? 'user';
+      
+      print('🔍 LOGIN DEBUG: User ID: ${user.uid}');
+      print('🔍 LOGIN DEBUG: User Data: $userData');
+      print('🔍 LOGIN DEBUG: Role: $role');
+      
+      // Store token and user info in secure storage for REST API calls
+      await TokenStorage().saveTokens(
+        accessToken: idToken,
+        refreshToken: idToken,
+        userId: user.uid,
+        userRole: role,
+      );
+
+      if (!mounted) return;
+      
+      setState(() => _isLoading = false);
+
+      print('🚗 NAVIGATION DEBUG: Role = $role');
+      if (role == 'driver') {
+        print('🚗 NAVIGATION: Pushing to /driver-dashboard');
+        Navigator.pushReplacementNamed(context, '/driver-dashboard');
       } else {
-        try {
-          final credential = PhoneAuthProvider.credential(
-            verificationId: _verificationId!,
-            smsCode: _otpController.text.trim(),
-          );
-          await FirebaseAuth.instance.signInWithCredential(credential);
-          Navigator.pushReplacementNamed(context, '/dashboard');
-        } on FirebaseAuthException catch (e) {
-          setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text('Invalid OTP: ${e.message}')),
-          );
-        }
+        print('👤 NAVIGATION: Pushing to /user-dashboard');
+        Navigator.pushReplacementNamed(context, '/user-dashboard');
       }
-    } else {
-      try {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: input,
-          password: _passwordController.text.trim(),
-        );
-        
-        // Get user role and route accordingly
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          final doc = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get();
-          if (doc.exists) {
-            final userData = doc.data()!;
-            final role = userData['role'] ?? 'user';
-            
-            if (role == 'driver') {
-              Navigator.pushReplacementNamed(context, '/driver-dashboard');
-            } else {
-              Navigator.pushReplacementNamed(context, '/user-dashboard');
-            }
-          } else {
-            Navigator.pushReplacementNamed(context, '/user-dashboard');
-          }
-        } else {
-          Navigator.pushReplacementNamed(context, '/user-dashboard');
-        }
-      } on FirebaseAuthException catch (e) {
-        setState(() => _isLoading = false);
-        String message = 'Login failed';
-        if (e.code == 'user-not-found') {
-          message = 'No user found for that email.';
-        } else if (e.code == 'wrong-password') {
-          message = 'Wrong password provided.';
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() => _isLoading = false);
+      String message = 'Login failed';
+      
+      if (e.toString().contains('user-not-found')) {
+        message = 'No user found with this email';
+      } else if (e.toString().contains('wrong-password')) {
+        message = 'Invalid email or password';
+      } else if (e.toString().contains('invalid-email')) {
+        message = 'Invalid email address';
+      } else if (e.toString().contains('network')) {
+        message = 'Network error. Please check your connection.';
       }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _resetPassword() async {
-    final input = _emailOrPhoneController.text.trim();
-    if (_isPhone) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Password reset is only available for email accounts.')),
-      );
-      return;
-    }
-    if (!EmailValidator.validate(input)) {
+    final email = _emailController.text.trim();
+    if (!EmailValidator.validate(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a valid email address.')),
       );
       return;
     }
+    
     try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: input);
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      
+      if (!mounted) return;
+      
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Password reset email sent! Check your inbox.'),
           backgroundColor: Colors.green,
         ),
       );
-    } on FirebaseAuthException catch (e) {
-      String message = 'Failed to send reset email';
-      if (e.code == 'user-not-found') {
-        message = 'No account found with this email address.';
-      } else if (e.code == 'invalid-email') {
-        message = 'Please enter a valid email address.';
-      } else {
-        message = 'Error: ${e.message}';
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
-      );
     } catch (e) {
+      if (!mounted) return;
+      
+      String message = 'Failed to send reset email';
+      if (e.toString().contains('user-not-found')) {
+        message = 'No account found with this email address.';
+      } else if (e.toString().contains('invalid-email')) {
+        message = 'Invalid email address.';
+      }
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('An unexpected error occurred: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text(message)),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -666,41 +653,30 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 32),
             TextField(
-                  controller: _emailOrPhoneController,
-                  decoration:
-                      const InputDecoration(labelText: 'Email or Phone'),
-                  onChanged: _onInputChanged,
+                  controller: _emailController,
+                  decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-                if (!_isPhone)
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-                if (_isPhone && _otpSent)
-                  TextField(
-                    controller: _otpController,
-                    decoration: const InputDecoration(labelText: 'Enter OTP'),
-                    keyboardType: TextInputType.number,
-                  ),
-            const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passwordController,
+                  decoration: const InputDecoration(labelText: 'Password'),
+                  obscureText: true,
+                ),
+                const SizedBox(height: 24),
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
-              onPressed: _login,
-                        child: Text(
-                            _isPhone && !_otpSent ? 'Send OTP' : 'Log In'),
+                        onPressed: _login,
+                        child: const Text('Log In'),
                       ),
-                if (!_isPhone)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: _resetPassword,
-                      child: const Text('Forgot Password?'),
-                    ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _resetPassword,
+                    child: const Text('Forgot Password?'),
                   ),
+                ),
               ],
             ),
           ),

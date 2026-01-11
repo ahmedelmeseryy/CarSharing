@@ -1,9 +1,12 @@
 import 'package:carsharing/pages/user/booking_confirmation_page.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:carsharing/core/providers/mutation_providers.dart';
+import 'package:carsharing/features/booking/data/models/booking_requests.dart';
+import 'package:carsharing/features/trip/data/models/points.dart';
 
-class PaymentPage extends StatelessWidget {
+class PaymentPage extends ConsumerWidget {
   final Map<String, dynamic> tripData;
   final String tripId;
   final int selectedSeats;
@@ -16,7 +19,7 @@ class PaymentPage extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final pricePerSeat = tripData['price'] as double;
     final totalPrice = pricePerSeat * selectedSeats;
 
@@ -55,7 +58,7 @@ class PaymentPage extends StatelessWidget {
               onPressed: () {
                 // In a real app, navigate to a card payment screen.
                 // For now, we'll treat it as a successful booking.
-                _processBooking(context, 'Card', totalPrice);
+                _processBooking(context, ref, 'Card', totalPrice);
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -66,7 +69,7 @@ class PaymentPage extends StatelessWidget {
               icon: const Icon(Icons.money),
               label: const Text('Pay with Cash'),
               onPressed: () {
-                 _processBooking(context, 'Cash', totalPrice);
+                 _processBooking(context, ref, 'Cash', totalPrice);
               },
                style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 15),
@@ -104,7 +107,7 @@ class PaymentPage extends StatelessWidget {
     );
   }
 
-  Future<void> _processBooking(BuildContext context, String paymentMethod, double totalPrice) async {
+  Future<void> _processBooking(BuildContext context, WidgetRef ref, String paymentMethod, double totalPrice) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -113,82 +116,77 @@ class PaymentPage extends StatelessWidget {
       return;
     }
 
-    // Debug: Print tripData to see what fields are available
-    print('TripData received:');
-    tripData.forEach((key, value) {
-      print('  $key: $value');
-    });
-
-    final tripRef = FirebaseFirestore.instance.collection('trips').doc(tripId);
-    final bookingRef = FirebaseFirestore.instance.collection('bookings').doc();
-
     try {
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final tripSnapshot = await transaction.get(tripRef);
+      // Extract trip details from tripData
+      final driverId = tripData['driverId'] ?? '';
+      final sourceLat = tripData['fromLatitude'] ?? tripData['sourceLatitude'] ?? 0.0;
+      final sourceLon = tripData['fromLongitude'] ?? tripData['sourceLongitude'] ?? 0.0;
+      final destLat = tripData['toLatitude'] ?? tripData['destinationLatitude'] ?? 0.0;
+      final destLon = tripData['toLongitude'] ?? tripData['destinationLongitude'] ?? 0.0;
+      final fromAddress = tripData['from'] ?? tripData['fromAddress'] ?? '';
+      final toAddress = tripData['to'] ?? tripData['toAddress'] ?? '';
+      final tripStartTime = tripData['date']?.toString() ?? DateTime.now().toUtc().toIso8601String();
 
-        if (!tripSnapshot.exists) {
-          throw Exception("Trip does not exist!");
-        }
-
-        final currentSeats = tripSnapshot.data()!['seats'] as int;
-        if (currentSeats < selectedSeats) {
-          throw Exception("Not enough seats available.");
-        }
-
-        final newSeatCount = currentSeats - selectedSeats;
-        transaction.update(tripRef, {'seats': newSeatCount});
-
-        // Get the actual trip data from Firestore to ensure we have the correct field names
-        final actualTripData = tripSnapshot.data()!;
-        
-        // Get user data from Firestore to get the actual name
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .get();
-        final userData = userDoc.data();
-        final passengerName = userData != null 
-            ? '${userData['name'] ?? ''} ${userData['surname'] ?? ''}'.trim()
-            : 'Unknown Passenger';
-        
-        transaction.set(bookingRef, {
-          'tripId': tripId,
-          'userId': user.uid,
-          'driverId': actualTripData['driverId'],
-          'seats': selectedSeats,
-          'totalPrice': totalPrice,
-          'paymentMethod': paymentMethod,
-          'status': 'confirmed',
-          'createdAt': FieldValue.serverTimestamp(),
-          // Include trip info for easier access in 'My Bookings'
-          'tripFrom': actualTripData['from'],
-          'tripTo': actualTripData['to'],
-          'tripDate': actualTripData['date'],
-          'passengerName': passengerName.isNotEmpty ? passengerName : 'Unknown Passenger',
-        });
-        
-        print('Booking created successfully:');
-        print('- Booking ID: ${bookingRef.id}');
-        print('- Trip ID: $tripId');
-        print('- User ID: ${user.uid}');
-        print('- Driver ID: ${actualTripData['driverId']}');
-        print('- Seats: $selectedSeats');
-        print('- Total Price: $totalPrice');
-        print('- Payment Method: $paymentMethod');
-        print('- Trip: ${actualTripData['from']} to ${actualTripData['to']}');
-        print('- Passenger Name: $passengerName');
-      });
-
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => BookingConfirmationPage(
-            tripData: tripData,
-            bookingId: bookingRef.id,
-            selectedSeats: selectedSeats,
-            totalPrice: totalPrice,
-          ),
+      final request = JoinTripRequest(
+        tripId: tripId,
+        passengerId: user.uid,
+        driverId: driverId,
+        pickupPoint: Points(
+          latitude: sourceLat is double ? sourceLat : (sourceLat as num).toDouble(),
+          longitude: sourceLon is double ? sourceLon : (sourceLon as num).toDouble(),
+          placeAddress: fromAddress,
         ),
-        (Route<dynamic> route) => route.isFirst,
+        destinationPoint: Points(
+          latitude: destLat is double ? destLat : (destLat as num).toDouble(),
+          longitude: destLon is double ? destLon : (destLon as num).toDouble(),
+          placeAddress: toAddress,
+        ),
+        rideStartTime: tripStartTime,
+        requestedSeats: selectedSeats,
+      );
+
+      final notifier = ref.read(joinTripProvider.notifier);
+      await notifier.joinTrip(request);
+
+      final state = ref.read(joinTripProvider);
+      state.when(
+        data: (booking) {
+          if (booking != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Trip booked successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            notifier.reset();
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(
+                builder: (context) => BookingConfirmationPage(
+                  tripData: tripData,
+                  bookingId: booking.rideId ?? '',
+                  selectedSeats: selectedSeats,
+                  totalPrice: totalPrice,
+                ),
+              ),
+              (Route<dynamic> route) => route.isFirst,
+            );
+          }
+        },
+        error: (error, stack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to book trip: $error')),
+          );
+        },
+        loading: () {
+          // Show loading indicator
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
