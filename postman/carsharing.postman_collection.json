@@ -1,0 +1,150 @@
+{
+  "info": {
+    "name": "CarSharing (Firebase Auth + Trip Service)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for Firebase-authenticated REST calls in the CarSharing project."
+  },
+  "item": [
+    {
+      "name": "Auth (Firebase)",
+      "item": [
+        {
+          "name": "Get Driver Firebase Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseApiKey}}",
+              "protocol": "https",
+              "host": ["identitytoolkit", "googleapis", "com"],
+              "path": ["v1", "accounts:signInWithPassword"],
+              "query": [
+                { "key": "key", "value": "{{firebaseApiKey}}" }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{driverEmail}}\",\n  \"password\": \"{{driverPassword}}\",\n  \"returnSecureToken\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('driverIdToken', json.idToken);",
+                  "pm.collectionVariables.set('driverId', json.localId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User Firebase Token",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={{firebaseApiKey}}",
+              "protocol": "https",
+              "host": ["identitytoolkit", "googleapis", "com"],
+              "path": ["v1", "accounts:signInWithPassword"],
+              "query": [
+                { "key": "key", "value": "{{firebaseApiKey}}" }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"{{userPassword}}\",\n  \"returnSecureToken\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.collectionVariables.set('userIdToken', json.idToken);",
+                  "pm.collectionVariables.set('userId', json.localId);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Trips (Driver)",
+      "item": [
+        {
+          "name": "Offer Trip",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{driverIdToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trip-service/api/trips/offer",
+              "host": ["{{baseUrl}}"],
+              "path": ["trip-service", "api", "trips", "offer"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"driverId\": \"{{driverId}}\",\n  \"vehicleNumber\": \"ABC-1234\",\n  \"sourceAddress\": {\n    \"latitude\": 52.5200,\n    \"longitude\": 13.4050,\n    \"placeAddress\": \"Berlin\"\n  },\n  \"destinationAddress\": {\n    \"latitude\": 48.1351,\n    \"longitude\": 11.5820,\n    \"placeAddress\": \"Munich\"\n  },\n  \"tripStartDateTime\": \"2026-01-29T10:00:00Z\",\n  \"offeredSeat\": 3\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Trips (Passenger)",
+      "item": [
+        {
+          "name": "Search Matching Route",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{userIdToken}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/trip-service/api/trips/search/matching-route?sourceLatitude=52.5200&sourceLongitude=13.4050&sourceRadiusKm=5&destinationLatitude=48.1351&destinationLongitude=11.5820&destinationRadiusKm=5&earliestDepartureTime=2026-01-29T09:00:00Z&requestedSeats=1&effectiveUserId={{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["trip-service", "api", "trips", "search", "matching-route"],
+              "query": [
+                { "key": "sourceLatitude", "value": "52.5200" },
+                { "key": "sourceLongitude", "value": "13.4050" },
+                { "key": "sourceRadiusKm", "value": "5" },
+                { "key": "destinationLatitude", "value": "48.1351" },
+                { "key": "destinationLongitude", "value": "11.5820" },
+                { "key": "destinationRadiusKm", "value": "5" },
+                { "key": "earliestDepartureTime", "value": "2026-01-29T09:00:00Z" },
+                { "key": "requestedSeats", "value": "1" },
+                { "key": "effectiveUserId", "value": "{{userId}}" }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://34.160.91.182" },
+    { "key": "firebaseApiKey", "value": "AIzaSyA--oetZ6qTZl1UtibFGgpWgR1QpPNdzjI" },
+    { "key": "driverEmail", "value": "" },
+    { "key": "driverPassword", "value": "" },
+    { "key": "userEmail", "value": "" },
+    { "key": "userPassword", "value": "" },
+    { "key": "driverIdToken", "value": "" },
+    { "key": "userIdToken", "value": "" },
+    { "key": "driverId", "value": "" },
+    { "key": "userId", "value": "" }
+  ]
+}

@@ -16,11 +16,8 @@ class Trip {
   final Map<String, dynamic>? sourceLocation;
   final Map<String, dynamic>? destinationLocation;
   
-  @JsonKey(name: 'offeredSeat')
-  final int offeredSeat;
-  
-  @JsonKey(name: 'currSeats', defaultValue: 0)
-  final int currSeats;
+  final int totalSeats;
+  final int bookedSeats;
   
   @JsonKey(name: 'tripStartDateTimeUTC')
   final DateTime tripStartDateTime;
@@ -55,8 +52,8 @@ class Trip {
     required this.destinationAddress,
     this.sourceLocation,
     this.destinationLocation,
-    required this.offeredSeat,
-    required this.currSeats,
+    required this.totalSeats,
+    this.bookedSeats = 0,
     required this.tripStartDateTime,
     this.tripTimezone,
     this.routeGeometry,
@@ -70,8 +67,8 @@ class Trip {
   factory Trip.fromJson(Map<String, dynamic> json) => _$TripFromJson(json);
   Map<String, dynamic> toJson() => _$TripToJson(this);
 
-  /// Helper: available seats = offered - current
-  int get availableSeats => offeredSeat - currSeats;
+  /// Helper: available seats = total - booked
+  int get availableSeats => totalSeats - bookedSeats;
 
   /// Helper: estimated fare
   double get estimatedFare {

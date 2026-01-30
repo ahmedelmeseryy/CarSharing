@@ -164,6 +164,14 @@ class LocalBookingsCacheNotifier extends StateNotifier<List<PassengerRideRespons
     state = [...state, booking];
   }
 
+  void removeBooking({String? rideId, String? tripId}) {
+    state = state.where((booking) {
+      final rideMatch = rideId != null && booking.rideId == rideId;
+      final tripMatch = tripId != null && booking.tripId == tripId;
+      return !(rideMatch || tripMatch);
+    }).toList();
+  }
+
   void clearCache() {
     state = [];
   }

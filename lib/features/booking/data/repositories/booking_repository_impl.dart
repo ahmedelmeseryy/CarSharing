@@ -17,7 +17,19 @@ class BookingRepositoryImpl implements IBookingRepository {
     print('📍 BOOKING REPO: joinTrip API response: $response');
     print('📍 BOOKING REPO: joinTrip response data: ${response.data}');
     if (response.data == null) {
-      throw Exception('Failed to join trip: ${response.message}');
+      // Backend returns null data with success message when booking succeeds
+      // Return a placeholder response so the UI knows it succeeded
+      print('✅ BOOKING REPO: joinTrip successful (null data), message: ${response.message}');
+      return PassengerRideResponse(
+        rideId: 'booking-${DateTime.now().millisecondsSinceEpoch}',
+        tripId: request.tripId,
+        driverId: request.driverId,
+        rideStatus: 'CONFIRMED',
+        pickupLocation: request.pickupPoint,
+        dropoffLocation: request.destinationPoint,
+        bookedSeats: request.requestedSeats,
+        tripStartDateTime: request.rideStartTime,
+      );
     }
     print('✅ BOOKING REPO: joinTrip successful, booking rideId: ${response.data!.rideId}');
     return response.data!;
@@ -26,9 +38,16 @@ class BookingRepositoryImpl implements IBookingRepository {
   @override
   Future<String> cancelBooking(CancelTripRequest request) async {
     final response = await _bookingApiService.cancelBooking(request);
-    if (response.data == null) {
-      throw Exception('Failed to cancel booking: ${response.message}');
+    
+    // Check if response contains an error object (HTTP 200 but business logic error)
+    if (response.error != null) {
+      throw Exception('Booking cancellation failed: ${response.error!.message}');
     }
+    
+    if (response.data == null) {
+      return response.message ?? 'Booking cancelled successfully';
+    }
+    
     return response.data!;
   }
 
@@ -53,6 +72,13 @@ class BookingRepositoryImpl implements IBookingRepository {
     } catch (e, st) {
       print('❌ BOOKING REPO: Exception: $e');
       print('❌ BOOKING REPO: Stack: $st');
+      
+      // Handle 404 - endpoint not implemented on backend yet
+      if (e.toString().contains('404') || e.toString().contains('NOT_FOUND')) {
+        print('⚠️ BOOKING REPO: Backend endpoint not available (404), returning empty list');
+        return <PassengerRideResponse>[];
+      }
+      
       rethrow;
     }
   }

@@ -132,6 +132,47 @@ class DriverTripsPage extends ConsumerStatefulWidget {
 class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
   final user = FirebaseAuth.instance.currentUser;
 
+  @override
+  void initState() {
+    super.initState();
+    // Listen to cancellation state changes
+    ref.listenManual(cancelTripProvider, (previous, next) {
+      if (!mounted) return;
+      
+      next.when(
+        data: (message) {
+          if (message.isNotEmpty) {
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Trip cancelled successfully'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            // Refresh the trips list
+            ref.invalidate(getUpcomingTripsForDriverProvider(user!.uid));
+            ref.read(cancelTripProvider.notifier).reset();
+          }
+        },
+        error: (error, stack) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error cancelling trip: $error'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          // Refresh to sync with server state
+          ref.invalidate(getUpcomingTripsForDriverProvider(user!.uid));
+          ref.read(cancelTripProvider.notifier).reset();
+        },
+        loading: () {},
+      );
+    });
+  }
+
   Future<void> _deleteTrip(String tripId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -152,46 +193,24 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
     );
 
     if (confirmed == true) {
-      try {
-        final request = CancelTripRequest(
-          userId: user!.uid,
-          tripId: tripId,
-        );
-        final notifier = ref.read(cancelTripProvider.notifier);
-        await notifier.cancelTrip(request);
-        
-        if (!mounted) return;
-        final state = ref.read(cancelTripProvider);
-        state.when(
-          data: (message) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Trip cancelled successfully.'),
-                backgroundColor: Colors.green,
-              ),
-            );
-            notifier.reset();
-            setState(() {}); // Refresh the list
-          },
-          error: (error, stack) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to cancel trip: $error'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          },
-          loading: () {},
-        );
-      } catch (e) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to cancel trip: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      
+      final request = CancelTripRequest(
+        userId: user!.uid,
+        tripId: tripId,
+      );
+      
+      // Show loading state
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cancelling trip...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+      
+      // Call cancelTrip - the listener will handle success/error
+      final notifier = ref.read(cancelTripProvider.notifier);
+      await notifier.cancelTrip(request);
     }
   }
 
@@ -240,9 +259,9 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
               
               final from = trip.sourceAddress.placeAddress ?? 'N/A';
               final to = trip.destinationAddress.placeAddress ?? 'N/A';
-              final seats = trip.offeredSeat;
-              final bookedSeats = trip.currSeats;
-              final bookingCount = trip.joinedRidersId?.length ?? 0;
+              final seats = trip.totalSeats;
+              final bookedSeats = trip.bookedSeats;
+              final bookingCount = trip.passengers?.length ?? 0;
               
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

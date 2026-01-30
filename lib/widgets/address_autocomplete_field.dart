@@ -134,6 +134,10 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
     // Get coordinates for the selected address
     final location = await PlacesService.geocodeAddress(prediction.description);
 
+    if (!mounted) {
+      return;
+    }
+
     if (location != null && widget.onAddressSelected != null) {
       widget.onAddressSelected!(
         location.address,
@@ -161,14 +165,13 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
 
   void _hideSuggestions({bool force = false}) {
     print('[OVERLAY] _hideSuggestions called');
-    if (!mounted && !force) return;
-    if (mounted) {
-      setState(() {
-        _showSuggestions = false;
-      });
-    } else {
+    if (!mounted || force) {
       _showSuggestions = false;
+      return;
     }
+    setState(() {
+      _showSuggestions = false;
+    });
   }
 
   @override
@@ -353,6 +356,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
           initialLat: null,
           initialLon: null,
           onLocationSelected: (latitude, longitude, address) {
+            if (!mounted) return;
             widget.controller.text = address;
             setState(() {
               _addressSelectedFromPredictions = true;

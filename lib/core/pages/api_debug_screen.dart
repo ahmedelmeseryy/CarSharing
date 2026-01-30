@@ -140,7 +140,7 @@ class _ApiDebugScreenState extends ConsumerState<ApiDebugScreen> {
         placeAddress: 'Munich',
       ),
       tripStartDateTime: DateTime.parse('2024-01-15T10:00:00Z'),
-      offeredSeat: 4,
+      totalSeats: 4,
     );
 
     await _runTest(

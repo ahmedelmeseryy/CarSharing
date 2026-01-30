@@ -11,8 +11,14 @@ class DriverTripResponse {
   @JsonKey(name: 'tripId')
   final String? tripId;
   
+  @JsonKey(name: 'driverId')
+  final String? driverId;
+  
   @JsonKey(name: 'vehicleNumber')
   final String vehicleNumber;
+  
+  @JsonKey(name: 'tripStatus')
+  final String tripStatus;
   
   @JsonKey(name: 'sourceAddress')
   final Points sourceAddress;
@@ -23,40 +29,45 @@ class DriverTripResponse {
   @JsonKey(name: 'tripStartDateTime')
   final String tripStartDateTime;
   
-  @JsonKey(name: 'offeredSeat')
-  final int offeredSeat;
+  @JsonKey(name: 'tripTimezone')
+  final String? tripTimezone;
   
-  /// Current number of passengers who joined
-  @JsonKey(name: 'currSeats', defaultValue: 0)
-  final int currSeats;
+  @JsonKey(name: 'totalSeats')
+  final int totalSeats;
   
-  /// List of passenger IDs who have joined
-  @JsonKey(name: 'joinedRidersId')
-  final List<String>? joinedRidersId;
+  @JsonKey(name: 'availableSeats')
+  final int availableSeats;
   
-  /// Trip status enum: pending/active/completed/cancelled
-  @JsonKey(name: 'tripStatus')
-  final String tripStatus;
+  @JsonKey(name: 'bookedSeats', defaultValue: 0)
+  final int bookedSeats;
   
-  /// Route distance in kilometers
-  @JsonKey(name: 'routeDistance')
-  final double? routeDistance;
+  @JsonKey(name: 'passengers')
+  final List<dynamic>? passengers;
   
-  /// Price per kilometer for this trip
+  @JsonKey(name: 'routeDistanceInKm')
+  final double? routeDistanceInKm;
+  
+  @JsonKey(name: 'routeDurationInMinutes')
+  final double? routeDurationInMinutes;
+  
   @JsonKey(name: 'pricePerKm')
   final double? pricePerKm;
 
   DriverTripResponse({
     this.tripId,
+    this.driverId,
     required this.vehicleNumber,
+    required this.tripStatus,
     required this.sourceAddress,
     required this.destinationAddress,
     required this.tripStartDateTime,
-    required this.offeredSeat,
-    required this.currSeats,
-    this.joinedRidersId,
-    required this.tripStatus,
-    this.routeDistance,
+    this.tripTimezone,
+    required this.totalSeats,
+    required this.availableSeats,
+    required this.bookedSeats,
+    this.passengers,
+    this.routeDistanceInKm,
+    this.routeDurationInMinutes,
     this.pricePerKm,
   });
 
@@ -65,19 +76,16 @@ class DriverTripResponse {
   
   Map<String, dynamic> toJson() => _$DriverTripResponseToJson(this);
 
-  /// Number of available seats remaining
-  int get availableSeats => offeredSeat - currSeats;
-
   /// Estimated total earnings if all seats filled
   double get estimatedEarnings {
-    if (routeDistance == null || pricePerKm == null) return 0.0;
-    return routeDistance! * pricePerKm! * offeredSeat;
+    if (routeDistanceInKm == null || pricePerKm == null) return 0.0;
+    return routeDistanceInKm! * pricePerKm! * totalSeats;
   }
 
   /// Estimated earnings from currently booked seats
   double get currentEarnings {
-    if (routeDistance == null || pricePerKm == null) return 0.0;
-    return routeDistance! * pricePerKm! * currSeats;
+    if (routeDistanceInKm == null || pricePerKm == null) return 0.0;
+    return routeDistanceInKm! * pricePerKm! * bookedSeats;
   }
 }
 
@@ -95,7 +103,7 @@ class PassengerRideResponse {
   final String driverId;
   
   @JsonKey(name: 'vehicleNumber')
-  final String vehicleNumber;
+  final String? vehicleNumber;
   
   /// Status of the booking: pending/confirmed/completed/cancelled
   @JsonKey(name: 'rideStatus')
@@ -113,7 +121,7 @@ class PassengerRideResponse {
   
   /// Estimated fare for this booking
   @JsonKey(name: 'estimatedFare')
-  final double estimatedFare;
+  final double? estimatedFare;
   
   @JsonKey(name: 'tripStartDateTime')
   final String tripStartDateTime;
@@ -122,12 +130,12 @@ class PassengerRideResponse {
     this.rideId,
     required this.tripId,
     required this.driverId,
-    required this.vehicleNumber,
+    this.vehicleNumber,
     required this.rideStatus,
     required this.pickupLocation,
     required this.dropoffLocation,
     required this.bookedSeats,
-    required this.estimatedFare,
+    this.estimatedFare,
     required this.tripStartDateTime,
   });
 

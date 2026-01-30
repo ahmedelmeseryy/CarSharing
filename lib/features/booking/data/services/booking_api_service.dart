@@ -1,5 +1,6 @@
 import 'package:carsharing/core/network/dio_client.dart';
 import 'package:carsharing/core/network/api_response.dart';
+import 'package:carsharing/core/network/api_exceptions.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
 
@@ -79,7 +80,8 @@ class BookingApiService {
   /// - request: CancelTripRequest with userId, tripId, rideId, optional reason
   /// 
   /// Returns: ApiResponse with cancellation confirmation/status
-  /// Throws: ApiException on network/auth/server errors or if booking not found/already cancelled
+  /// Throws: ApiException on network/auth/server errors or if error object is present in response
+  /// Note: This endpoint returns HTTP 200 even for logical errors, so we check response.error
   /// 
   /// Common Status Codes:
   /// - 200: Booking cancelled successfully
@@ -101,7 +103,7 @@ class BookingApiService {
     CancelTripRequest request,
   ) async {
     try {
-      return await _dioClient.post<ApiResponse<String>>(
+      final response = await _dioClient.post<ApiResponse<String>>(
         '/trip-service/api/bookings/cancel',
         data: request.toJson(),
         fromJson: (json) {
@@ -114,32 +116,43 @@ class BookingApiService {
           return ApiResponse<String>(data: json.toString());
         },
       );
+      
+      // Check if response contains an error object (HTTP 200 but business logic error)
+      if (response.error != null) {
+        throw ServerException(
+          message: response.error!.message,
+          statusCode: 500,
+          code: response.error!.code ?? 'BUSINESS_ERROR',
+        );
+      }
+      
+      return response;
     } catch (e) {
       rethrow;
     }
   }
 
-  /// GET /api/bookings/upcoming/passenger/{passengerId}
-  /// Get all upcoming bookings for a passenger
+  /// GET /api/bookings/active/passenger/{passengerId}
+  /// Get all active bookings for a passenger
   /// 
   /// Parameters:
   /// - passengerId: UUID of the passenger
   /// 
-  /// Returns: ApiResponse with List<PassengerRideResponse> for upcoming rides
+  /// Returns: ApiResponse with List<PassengerRideResponse> for active rides
   /// Throws: ApiException on network/auth/server errors
   /// 
-  /// Note: "Upcoming" typically means:
+  /// Note: "Active" typically means:
   /// - Status = pending or confirmed
   /// - Trip start time > now
   /// - Not cancelled
   /// 
   /// Example:
   /// ```dart
-  /// final upcomingRides = await bookingService.getUpcomingBookingsForPassenger(
+  /// final activeRides = await bookingService.getUpcomingBookingsForPassenger(
   ///   userId,
   /// );
   /// 
-  /// for (var ride in upcomingRides.data ?? []) {
+  /// for (var ride in activeRides.data ?? []) {
   ///   print('Riding with driver ${ride.driverId} on ${ride.tripStartDateTime}');
   /// }
   /// ```
@@ -149,7 +162,7 @@ class BookingApiService {
       print('🔵 BOOKING API: Fetching bookings for passenger: $passengerId');
       final response = await _dioClient
           .get<ApiResponse<List<PassengerRideResponse>>>(
-        '/trip-service/api/bookings/upcoming/passenger/$passengerId',
+        '/trip-service/api/bookings/active/passenger/$passengerId',
         fromJson: (json) {
           print('📦 BOOKING API: Raw response: $json');
           if (json is Map<String, dynamic>) {

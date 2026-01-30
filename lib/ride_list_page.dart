@@ -58,7 +58,7 @@ class _RideListPageState extends ConsumerState<RideListPage> {
       'destinationLatitude': trip.destinationAddress.latitude,
       'destinationLongitude': trip.destinationAddress.longitude,
       'seats': trip.availableSeats,
-      'offeredSeats': trip.offeredSeat,
+      'offeredSeats': trip.totalSeats,
       'availableSeats': trip.availableSeats,
       'price': trip.estimatedFare,
       'date': trip.tripStartDateTime,

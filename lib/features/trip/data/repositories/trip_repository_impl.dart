@@ -24,8 +24,15 @@ class TripRepositoryImpl implements ITripRepository {
 
   @override
   Future<String> cancelTrip(CancelTripRequest request) async {
-    await _tripApiService.cancelTrip(request);
-    return 'Trip cancelled successfully';
+    final response = await _tripApiService.cancelTrip(request);
+    
+    // Double-check: ensure no error object in response
+    if (response.error != null) {
+      throw Exception('Trip cancellation failed: ${response.error!.message}');
+    }
+    
+    // Return success message
+    return response.data ?? 'Trip cancelled successfully';
   }
 
   @override

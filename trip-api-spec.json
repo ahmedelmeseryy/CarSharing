@@ -1,0 +1,1036 @@
+﻿{
+    "openapi":  "3.0.1",
+    "info":  {
+                 "title":  "Trip Service API",
+                 "description":  "Trip creation and management service for the Car Sharing platform",
+                 "contact":  {
+                                 "name":  "Hikmat Samadov",
+                                 "email":  "Samadov@students.uni-marburg.de"
+                             },
+                 "license":  {
+                                 "name":  "Apache 2.0",
+                                 "url":  "http://www.apache.org/licenses/LICENSE-2.0.html"
+                             },
+                 "version":  "1.0.0"
+             },
+    "servers":  [
+                    {
+                        "url":  "/trip-service",
+                        "description":  "Trip Service"
+                    }
+                ],
+    "paths":  {
+                  "/api/trips/offer":  {
+                                           "post":  {
+                                                        "tags":  [
+                                                                     "trip-controller"
+                                                                 ],
+                                                        "operationId":  "offerTrip",
+                                                        "requestBody":  {
+                                                                            "content":  {
+                                                                                            "application/json":  {
+                                                                                                                     "schema":  {
+                                                                                                                                    "$ref":  "#/components/schemas/OfferRideRequest"
+                                                                                                                                }
+                                                                                                                 }
+                                                                                        },
+                                                                            "required":  true
+                                                                        },
+                                                        "responses":  {
+                                                                          "200":  {
+                                                                                      "description":  "OK",
+                                                                                      "content":  {
+                                                                                                      "*/*":  {
+                                                                                                                  "schema":  {
+                                                                                                                                 "$ref":  "#/components/schemas/ApiResponseOfferRideResponse"
+                                                                                                                             }
+                                                                                                              }
+                                                                                                  }
+                                                                                  }
+                                                                      }
+                                                    }
+                                       },
+                  "/api/trips/cancel":  {
+                                            "post":  {
+                                                         "tags":  [
+                                                                      "trip-controller"
+                                                                  ],
+                                                         "operationId":  "cancelTrip",
+                                                         "requestBody":  {
+                                                                             "content":  {
+                                                                                             "application/json":  {
+                                                                                                                      "schema":  {
+                                                                                                                                     "$ref":  "#/components/schemas/CancelTripRequest"
+                                                                                                                                 }
+                                                                                                                  }
+                                                                                         },
+                                                                             "required":  true
+                                                                         },
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "OK",
+                                                                                       "content":  {
+                                                                                                       "*/*":  {
+                                                                                                                   "schema":  {
+                                                                                                                                  "$ref":  "#/components/schemas/ApiResponseString"
+                                                                                                                              }
+                                                                                                               }
+                                                                                                   }
+                                                                                   }
+                                                                       }
+                                                     }
+                                        },
+                  "/api/bookings/join":  {
+                                             "post":  {
+                                                          "tags":  [
+                                                                       "booking-controller"
+                                                                   ],
+                                                          "operationId":  "joinTrip",
+                                                          "requestBody":  {
+                                                                              "content":  {
+                                                                                              "application/json":  {
+                                                                                                                       "schema":  {
+                                                                                                                                      "$ref":  "#/components/schemas/JoinTripRequest"
+                                                                                                                                  }
+                                                                                                                   }
+                                                                                          },
+                                                                              "required":  true
+                                                                          },
+                                                          "responses":  {
+                                                                            "200":  {
+                                                                                        "description":  "OK",
+                                                                                        "content":  {
+                                                                                                        "*/*":  {
+                                                                                                                    "schema":  {
+                                                                                                                                   "$ref":  "#/components/schemas/ApiResponseString"
+                                                                                                                               }
+                                                                                                                }
+                                                                                                    }
+                                                                                    }
+                                                                        }
+                                                      }
+                                         },
+                  "/api/bookings/cancel":  {
+                                               "post":  {
+                                                            "tags":  [
+                                                                         "booking-controller"
+                                                                     ],
+                                                            "operationId":  "cancelBooking",
+                                                            "requestBody":  {
+                                                                                "content":  {
+                                                                                                "application/json":  {
+                                                                                                                         "schema":  {
+                                                                                                                                        "$ref":  "#/components/schemas/CancelTripRequest"
+                                                                                                                                    }
+                                                                                                                     }
+                                                                                            },
+                                                                                "required":  true
+                                                                            },
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "OK",
+                                                                                          "content":  {
+                                                                                                          "*/*":  {
+                                                                                                                      "schema":  {
+                                                                                                                                     "$ref":  "#/components/schemas/ApiResponseString"
+                                                                                                                                 }
+                                                                                                                  }
+                                                                                                      }
+                                                                                      }
+                                                                          }
+                                                        }
+                                           },
+                  "/api/trips/search/near-source":  {
+                                                        "get":  {
+                                                                    "tags":  [
+                                                                                 "trip-controller"
+                                                                             ],
+                                                                    "operationId":  "searchNearSource",
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "name":  "latitude",
+                                                                                           "in":  "query",
+                                                                                           "required":  true,
+                                                                                           "schema":  {
+                                                                                                          "type":  "number",
+                                                                                                          "format":  "double"
+                                                                                                      }
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "longitude",
+                                                                                           "in":  "query",
+                                                                                           "required":  true,
+                                                                                           "schema":  {
+                                                                                                          "type":  "number",
+                                                                                                          "format":  "double"
+                                                                                                      }
+                                                                                       },
+                                                                                       {
+                                                                                           "name":  "radiusKm",
+                                                                                           "in":  "query",
+                                                                                           "required":  false,
+                                                                                           "schema":  {
+                                                                                                          "type":  "number",
+                                                                                                          "format":  "double",
+                                                                                                          "default":  5.0
+                                                                                                      }
+                                                                                       }
+                                                                                   ],
+                                                                    "responses":  {
+                                                                                      "200":  {
+                                                                                                  "description":  "OK",
+                                                                                                  "content":  {
+                                                                                                                  "*/*":  {
+                                                                                                                              "schema":  {
+                                                                                                                                             "$ref":  "#/components/schemas/ApiResponseListTrip"
+                                                                                                                                         }
+                                                                                                                          }
+                                                                                                              }
+                                                                                              }
+                                                                                  }
+                                                                }
+                                                    },
+                  "/api/trips/search/near-destination":  {
+                                                             "get":  {
+                                                                         "tags":  [
+                                                                                      "trip-controller"
+                                                                                  ],
+                                                                         "operationId":  "searchNearDestination",
+                                                                         "parameters":  [
+                                                                                            {
+                                                                                                "name":  "latitude",
+                                                                                                "in":  "query",
+                                                                                                "required":  true,
+                                                                                                "schema":  {
+                                                                                                               "type":  "number",
+                                                                                                               "format":  "double"
+                                                                                                           }
+                                                                                            },
+                                                                                            {
+                                                                                                "name":  "longitude",
+                                                                                                "in":  "query",
+                                                                                                "required":  true,
+                                                                                                "schema":  {
+                                                                                                               "type":  "number",
+                                                                                                               "format":  "double"
+                                                                                                           }
+                                                                                            },
+                                                                                            {
+                                                                                                "name":  "radiusKm",
+                                                                                                "in":  "query",
+                                                                                                "required":  false,
+                                                                                                "schema":  {
+                                                                                                               "type":  "number",
+                                                                                                               "format":  "double",
+                                                                                                               "default":  5.0
+                                                                                                           }
+                                                                                            }
+                                                                                        ],
+                                                                         "responses":  {
+                                                                                           "200":  {
+                                                                                                       "description":  "OK",
+                                                                                                       "content":  {
+                                                                                                                       "*/*":  {
+                                                                                                                                   "schema":  {
+                                                                                                                                                  "$ref":  "#/components/schemas/ApiResponseListTrip"
+                                                                                                                                              }
+                                                                                                                               }
+                                                                                                                   }
+                                                                                                   }
+                                                                                       }
+                                                                     }
+                                                         },
+                  "/api/trips/search/matching-route":  {
+                                                           "get":  {
+                                                                       "tags":  [
+                                                                                    "trip-controller"
+                                                                                ],
+                                                                       "operationId":  "searchMatchingRoute",
+                                                                       "parameters":  [
+                                                                                          {
+                                                                                              "name":  "sourceLatitude",
+                                                                                              "in":  "query",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "number",
+                                                                                                             "format":  "double"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "sourceLongitude",
+                                                                                              "in":  "query",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "number",
+                                                                                                             "format":  "double"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "sourceRadiusKm",
+                                                                                              "in":  "query",
+                                                                                              "required":  false,
+                                                                                              "schema":  {
+                                                                                                             "type":  "number",
+                                                                                                             "format":  "double",
+                                                                                                             "default":  5.0
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "destinationLatitude",
+                                                                                              "in":  "query",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "number",
+                                                                                                             "format":  "double"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "destinationLongitude",
+                                                                                              "in":  "query",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "number",
+                                                                                                             "format":  "double"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "destinationRadiusKm",
+                                                                                              "in":  "query",
+                                                                                              "required":  false,
+                                                                                              "schema":  {
+                                                                                                             "type":  "number",
+                                                                                                             "format":  "double",
+                                                                                                             "default":  5.0
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "earliestDepartureTime",
+                                                                                              "in":  "query",
+                                                                                              "required":  false,
+                                                                                              "schema":  {
+                                                                                                             "type":  "string"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "latestDepartureTime",
+                                                                                              "in":  "query",
+                                                                                              "required":  false,
+                                                                                              "schema":  {
+                                                                                                             "type":  "string"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "requestedSeats",
+                                                                                              "in":  "query",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "integer",
+                                                                                                             "format":  "int32"
+                                                                                                         }
+                                                                                          },
+                                                                                          {
+                                                                                              "name":  "effectiveUserId",
+                                                                                              "in":  "query",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "string"
+                                                                                                         }
+                                                                                          }
+                                                                                      ],
+                                                                       "responses":  {
+                                                                                         "200":  {
+                                                                                                     "description":  "OK",
+                                                                                                     "content":  {
+                                                                                                                     "*/*":  {
+                                                                                                                                 "schema":  {
+                                                                                                                                                "$ref":  "#/components/schemas/ApiResponseListTrip"
+                                                                                                                                            }
+                                                                                                                             }
+                                                                                                                 }
+                                                                                                 }
+                                                                                     }
+                                                                   }
+                                                       },
+                  "/api/trips/active/driver/{driverId}":  {
+                                                              "get":  {
+                                                                          "tags":  [
+                                                                                       "trip-controller"
+                                                                                   ],
+                                                                          "operationId":  "getDriverActiveTrips",
+                                                                          "parameters":  [
+                                                                                             {
+                                                                                                 "name":  "driverId",
+                                                                                                 "in":  "path",
+                                                                                                 "required":  true,
+                                                                                                 "schema":  {
+                                                                                                                "type":  "string"
+                                                                                                            }
+                                                                                             }
+                                                                                         ],
+                                                                          "responses":  {
+                                                                                            "200":  {
+                                                                                                        "description":  "OK",
+                                                                                                        "content":  {
+                                                                                                                        "*/*":  {
+                                                                                                                                    "schema":  {
+                                                                                                                                                   "$ref":  "#/components/schemas/ApiResponseListDriverTripResponse"
+                                                                                                                                               }
+                                                                                                                                }
+                                                                                                                    }
+                                                                                                    }
+                                                                                        }
+                                                                      }
+                                                          },
+                  "/api/bookings/active/passenger/{passengerId}":  {
+                                                                       "get":  {
+                                                                                   "tags":  [
+                                                                                                "booking-controller"
+                                                                                            ],
+                                                                                   "operationId":  "getPassengerActiveBookings",
+                                                                                   "parameters":  [
+                                                                                                      {
+                                                                                                          "name":  "passengerId",
+                                                                                                          "in":  "path",
+                                                                                                          "required":  true,
+                                                                                                          "schema":  {
+                                                                                                                         "type":  "string"
+                                                                                                                     }
+                                                                                                      }
+                                                                                                  ],
+                                                                                   "responses":  {
+                                                                                                     "200":  {
+                                                                                                                 "description":  "OK",
+                                                                                                                 "content":  {
+                                                                                                                                 "*/*":  {
+                                                                                                                                             "schema":  {
+                                                                                                                                                            "$ref":  "#/components/schemas/ApiResponseListPassengerRideResponse"
+                                                                                                                                                        }
+                                                                                                                                         }
+                                                                                                                             }
+                                                                                                             }
+                                                                                                 }
+                                                                               }
+                                                                   }
+              },
+    "components":  {
+                       "schemas":  {
+                                       "OfferRideRequest":  {
+                                                                "type":  "object",
+                                                                "properties":  {
+                                                                                   "driverId":  {
+                                                                                                    "type":  "string"
+                                                                                                },
+                                                                                   "vehicleNumber":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                   "sourceAddress":  {
+                                                                                                         "$ref":  "#/components/schemas/Points"
+                                                                                                     },
+                                                                                   "destinationAddress":  {
+                                                                                                              "$ref":  "#/components/schemas/Points"
+                                                                                                          },
+                                                                                   "tripStartDateTime":  {
+                                                                                                             "type":  "string",
+                                                                                                             "description":  "ISO-8601 date-time with timezone offset (e.g., \u0027Z\u0027 for UTC or \u0027+01:00\u0027). Milliseconds are optional.",
+                                                                                                             "format":  "date-time",
+                                                                                                             "example":  "2026-01-11T13:09:26.095Z"
+                                                                                                         },
+                                                                                   "totalSeats":  {
+                                                                                                      "type":  "integer",
+                                                                                                      "format":  "int32"
+                                                                                                  }
+                                                                               }
+                                                            },
+                                       "Points":  {
+                                                      "type":  "object",
+                                                      "properties":  {
+                                                                         "latitude":  {
+                                                                                          "type":  "number",
+                                                                                          "format":  "double"
+                                                                                      },
+                                                                         "longitude":  {
+                                                                                           "type":  "number",
+                                                                                           "format":  "double"
+                                                                                       },
+                                                                         "placeId":  {
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                         "placeAddress":  {
+                                                                                              "type":  "string"
+                                                                                          }
+                                                                     }
+                                                  },
+                                       "ApiError":  {
+                                                        "type":  "object",
+                                                        "properties":  {
+                                                                           "status":  {
+                                                                                          "type":  "integer",
+                                                                                          "format":  "int32"
+                                                                                      },
+                                                                           "code":  {
+                                                                                        "type":  "string"
+                                                                                    },
+                                                                           "message":  {
+                                                                                           "type":  "string"
+                                                                                       },
+                                                                           "error":  {
+                                                                                         "$ref":  "#/components/schemas/ErrorBody"
+                                                                                     },
+                                                                           "timestamp":  {
+                                                                                             "type":  "string",
+                                                                                             "format":  "date-time"
+                                                                                         },
+                                                                           "requestId":  {
+                                                                                             "type":  "string"
+                                                                                         }
+                                                                       }
+                                                    },
+                                       "ApiResponseOfferRideResponse":  {
+                                                                            "type":  "object",
+                                                                            "properties":  {
+                                                                                               "data":  {
+                                                                                                            "$ref":  "#/components/schemas/OfferRideResponse"
+                                                                                                        },
+                                                                                               "error":  {
+                                                                                                             "$ref":  "#/components/schemas/ApiError"
+                                                                                                         },
+                                                                                               "message":  {
+                                                                                                               "type":  "string"
+                                                                                                           },
+                                                                                               "timestamp":  {
+                                                                                                                 "type":  "string",
+                                                                                                                 "format":  "date-time"
+                                                                                                             }
+                                                                                           }
+                                                                        },
+                                       "ErrorBody":  {
+                                                         "type":  "object",
+                                                         "properties":  {
+                                                                            "path":  {
+                                                                                         "type":  "string"
+                                                                                     },
+                                                                            "details":  {
+                                                                                            "type":  "array",
+                                                                                            "items":  {
+                                                                                                          "$ref":  "#/components/schemas/ErrorDetail"
+                                                                                                      }
+                                                                                        }
+                                                                        }
+                                                     },
+                                       "ErrorDetail":  {
+                                                           "type":  "object",
+                                                           "properties":  {
+                                                                              "field":  {
+                                                                                            "type":  "string"
+                                                                                        },
+                                                                              "message":  {
+                                                                                              "type":  "string"
+                                                                                          },
+                                                                              "type":  {
+                                                                                           "type":  "string"
+                                                                                       },
+                                                                              "context":  {
+                                                                                              "type":  "object",
+                                                                                              "additionalProperties":  {
+                                                                                                                           "type":  "object"
+                                                                                                                       }
+                                                                                          }
+                                                                          }
+                                                       },
+                                       "Geometry":  {
+                                                        "type":  "object",
+                                                        "properties":  {
+                                                                           "type":  {
+                                                                                        "type":  "string"
+                                                                                    },
+                                                                           "coordinates":  {
+                                                                                               "type":  "array",
+                                                                                               "items":  {
+                                                                                                             "type":  "array",
+                                                                                                             "items":  {
+                                                                                                                           "type":  "number",
+                                                                                                                           "format":  "double"
+                                                                                                                       }
+                                                                                                         }
+                                                                                           }
+                                                                       }
+                                                    },
+                                       "OfferRideResponse":  {
+                                                                 "type":  "object",
+                                                                 "properties":  {
+                                                                                    "tripId":  {
+                                                                                                   "type":  "string"
+                                                                                               },
+                                                                                    "vehicleNumber":  {
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                    "sourceAddress":  {
+                                                                                                          "$ref":  "#/components/schemas/Points"
+                                                                                                      },
+                                                                                    "destinationAddress":  {
+                                                                                                               "$ref":  "#/components/schemas/Points"
+                                                                                                           },
+                                                                                    "tripStartDateTime":  {
+                                                                                                              "type":  "string",
+                                                                                                              "format":  "date-time",
+                                                                                                              "example":  "2026-01-11T13:09:26+01:00"
+                                                                                                          },
+                                                                                    "tripTimezone":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                    "routeGeometry":  {
+                                                                                                          "$ref":  "#/components/schemas/Geometry"
+                                                                                                      },
+                                                                                    "routeDistanceInMeters":  {
+                                                                                                                  "type":  "number",
+                                                                                                                  "format":  "double"
+                                                                                                              },
+                                                                                    "routeDistanceInKm":  {
+                                                                                                              "type":  "number",
+                                                                                                              "format":  "double"
+                                                                                                          },
+                                                                                    "routeDurationInSeconds":  {
+                                                                                                                   "type":  "number",
+                                                                                                                   "format":  "double"
+                                                                                                               },
+                                                                                    "routeDurationInMinutes":  {
+                                                                                                                   "type":  "number",
+                                                                                                                   "format":  "double"
+                                                                                                               },
+                                                                                    "tripCreated":  {
+                                                                                                        "type":  "boolean"
+                                                                                                    },
+                                                                                    "errorMessage":  {
+                                                                                                         "type":  "string"
+                                                                                                     }
+                                                                                }
+                                                             },
+                                       "CancelTripRequest":  {
+                                                                 "type":  "object",
+                                                                 "properties":  {
+                                                                                    "userId":  {
+                                                                                                   "type":  "string"
+                                                                                               },
+                                                                                    "tripId":  {
+                                                                                                   "type":  "string"
+                                                                                               },
+                                                                                    "rideId":  {
+                                                                                                   "type":  "string"
+                                                                                               },
+                                                                                    "cancellationReason":  {
+                                                                                                               "type":  "string"
+                                                                                                           }
+                                                                                }
+                                                             },
+                                       "ApiResponseString":  {
+                                                                 "type":  "object",
+                                                                 "properties":  {
+                                                                                    "data":  {
+                                                                                                 "type":  "string"
+                                                                                             },
+                                                                                    "error":  {
+                                                                                                  "$ref":  "#/components/schemas/ApiError"
+                                                                                              },
+                                                                                    "message":  {
+                                                                                                    "type":  "string"
+                                                                                                },
+                                                                                    "timestamp":  {
+                                                                                                      "type":  "string",
+                                                                                                      "format":  "date-time"
+                                                                                                  }
+                                                                                }
+                                                             },
+                                       "JoinTripRequest":  {
+                                                               "required":  [
+                                                                                "requestedSeats"
+                                                                            ],
+                                                               "type":  "object",
+                                                               "properties":  {
+                                                                                  "tripId":  {
+                                                                                                 "type":  "string"
+                                                                                             },
+                                                                                  "passengerId":  {
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                  "driverId":  {
+                                                                                                   "type":  "string"
+                                                                                               },
+                                                                                  "pickupPoint":  {
+                                                                                                      "$ref":  "#/components/schemas/LocationPoint"
+                                                                                                  },
+                                                                                  "destinationPoint":  {
+                                                                                                           "$ref":  "#/components/schemas/LocationPoint"
+                                                                                                       },
+                                                                                  "rideStartTime":  {
+                                                                                                        "type":  "string"
+                                                                                                    },
+                                                                                  "requestedSeats":  {
+                                                                                                         "minimum":  1,
+                                                                                                         "type":  "integer",
+                                                                                                         "format":  "int32"
+                                                                                                     }
+                                                                              }
+                                                           },
+                                       "LocationPoint":  {
+                                                             "type":  "object",
+                                                             "properties":  {
+                                                                                "latitude":  {
+                                                                                                 "type":  "number",
+                                                                                                 "format":  "double"
+                                                                                             },
+                                                                                "longitude":  {
+                                                                                                  "type":  "number",
+                                                                                                  "format":  "double"
+                                                                                              },
+                                                                                "placeAddress":  {
+                                                                                                     "type":  "string"
+                                                                                                 }
+                                                                            }
+                                                         },
+                                       "ApiResponseListTrip":  {
+                                                                   "type":  "object",
+                                                                   "properties":  {
+                                                                                      "data":  {
+                                                                                                   "type":  "array",
+                                                                                                   "items":  {
+                                                                                                                 "$ref":  "#/components/schemas/Trip"
+                                                                                                             }
+                                                                                               },
+                                                                                      "error":  {
+                                                                                                    "$ref":  "#/components/schemas/ApiError"
+                                                                                                },
+                                                                                      "message":  {
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                      "timestamp":  {
+                                                                                                        "type":  "string",
+                                                                                                        "format":  "date-time"
+                                                                                                    }
+                                                                                  }
+                                                               },
+                                       "ObjectId":  {
+                                                        "type":  "object",
+                                                        "properties":  {
+                                                                           "timestamp":  {
+                                                                                             "type":  "integer",
+                                                                                             "format":  "int32"
+                                                                                         },
+                                                                           "date":  {
+                                                                                        "type":  "string",
+                                                                                        "format":  "date-time"
+                                                                                    }
+                                                                       }
+                                                    },
+                                       "Point":  {
+                                                     "type":  "object",
+                                                     "properties":  {
+                                                                        "x":  {
+                                                                                  "type":  "number",
+                                                                                  "format":  "double"
+                                                                              },
+                                                                        "y":  {
+                                                                                  "type":  "number",
+                                                                                  "format":  "double"
+                                                                              }
+                                                                    }
+                                                 },
+                                       "Trip":  {
+                                                    "required":  [
+                                                                     "destinationAddress",
+                                                                     "driverId",
+                                                                     "sourceAddress",
+                                                                     "tripStatus",
+                                                                     "vehicleNumber"
+                                                                 ],
+                                                    "type":  "object",
+                                                    "properties":  {
+                                                                       "tripId":  {
+                                                                                      "type":  "string"
+                                                                                  },
+                                                                       "tripStatus":  {
+                                                                                          "type":  "string",
+                                                                                          "enum":  [
+                                                                                                       "OFFERED",
+                                                                                                       "AVAILABLE",
+                                                                                                       "IN_PROGRESS",
+                                                                                                       "COMPLETED",
+                                                                                                       "CANCELLED"
+                                                                                                   ]
+                                                                                      },
+                                                                       "vehicleNumber":  {
+                                                                                             "type":  "string"
+                                                                                         },
+                                                                       "driverId":  {
+                                                                                        "type":  "string"
+                                                                                    },
+                                                                       "sourceAddress":  {
+                                                                                             "$ref":  "#/components/schemas/Points"
+                                                                                         },
+                                                                       "destinationAddress":  {
+                                                                                                  "$ref":  "#/components/schemas/Points"
+                                                                                              },
+                                                                       "sourceLocation":  {
+                                                                                              "$ref":  "#/components/schemas/Point"
+                                                                                          },
+                                                                       "destinationLocation":  {
+                                                                                                   "$ref":  "#/components/schemas/Point"
+                                                                                               },
+                                                                       "totalSeats":  {
+                                                                                          "minimum":  1,
+                                                                                          "type":  "integer",
+                                                                                          "format":  "int32"
+                                                                                      },
+                                                                       "bookedSeats":  {
+                                                                                           "minimum":  0,
+                                                                                           "type":  "integer",
+                                                                                           "format":  "int32"
+                                                                                       },
+                                                                       "tripStartDateTimeUTC":  {
+                                                                                                    "type":  "string",
+                                                                                                    "format":  "date-time"
+                                                                                                },
+                                                                       "tripTimezone":  {
+                                                                                            "type":  "string"
+                                                                                        },
+                                                                       "routeGeometry":  {
+                                                                                             "$ref":  "#/components/schemas/Geometry"
+                                                                                         },
+                                                                       "routeDistance":  {
+                                                                                             "type":  "number",
+                                                                                             "format":  "double"
+                                                                                         },
+                                                                       "routeDuration":  {
+                                                                                             "type":  "number",
+                                                                                             "format":  "double"
+                                                                                         },
+                                                                       "pricePerKm":  {
+                                                                                          "type":  "number",
+                                                                                          "format":  "double"
+                                                                                      },
+                                                                       "joinedRidersId":  {
+                                                                                              "type":  "array",
+                                                                                              "items":  {
+                                                                                                            "$ref":  "#/components/schemas/ObjectId"
+                                                                                                        }
+                                                                                          },
+                                                                       "createdDate":  {
+                                                                                           "type":  "string",
+                                                                                           "format":  "date-time"
+                                                                                       }
+                                                                   }
+                                                },
+                                       "ApiResponseListDriverTripResponse":  {
+                                                                                 "type":  "object",
+                                                                                 "properties":  {
+                                                                                                    "data":  {
+                                                                                                                 "type":  "array",
+                                                                                                                 "items":  {
+                                                                                                                               "$ref":  "#/components/schemas/DriverTripResponse"
+                                                                                                                           }
+                                                                                                             },
+                                                                                                    "error":  {
+                                                                                                                  "$ref":  "#/components/schemas/ApiError"
+                                                                                                              },
+                                                                                                    "message":  {
+                                                                                                                    "type":  "string"
+                                                                                                                },
+                                                                                                    "timestamp":  {
+                                                                                                                      "type":  "string",
+                                                                                                                      "format":  "date-time"
+                                                                                                                  }
+                                                                                                }
+                                                                             },
+                                       "DriverTripResponse":  {
+                                                                  "type":  "object",
+                                                                  "properties":  {
+                                                                                     "tripId":  {
+                                                                                                    "type":  "string"
+                                                                                                },
+                                                                                     "driverId":  {
+                                                                                                      "type":  "string"
+                                                                                                  },
+                                                                                     "vehicleNumber":  {
+                                                                                                           "type":  "string"
+                                                                                                       },
+                                                                                     "tripStatus":  {
+                                                                                                        "type":  "string",
+                                                                                                        "enum":  [
+                                                                                                                     "OFFERED",
+                                                                                                                     "AVAILABLE",
+                                                                                                                     "IN_PROGRESS",
+                                                                                                                     "COMPLETED",
+                                                                                                                     "CANCELLED"
+                                                                                                                 ]
+                                                                                                    },
+                                                                                     "sourceAddress":  {
+                                                                                                           "$ref":  "#/components/schemas/Points"
+                                                                                                       },
+                                                                                     "destinationAddress":  {
+                                                                                                                "$ref":  "#/components/schemas/Points"
+                                                                                                            },
+                                                                                     "tripStartDateTime":  {
+                                                                                                               "type":  "string",
+                                                                                                               "format":  "date-time",
+                                                                                                               "example":  "2026-01-11T13:09:26Z"
+                                                                                                           },
+                                                                                     "tripTimezone":  {
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                     "totalSeats":  {
+                                                                                                        "type":  "integer",
+                                                                                                        "format":  "int32"
+                                                                                                    },
+                                                                                     "availableSeats":  {
+                                                                                                            "type":  "integer",
+                                                                                                            "format":  "int32"
+                                                                                                        },
+                                                                                     "bookedSeats":  {
+                                                                                                         "type":  "integer",
+                                                                                                         "format":  "int32"
+                                                                                                     },
+                                                                                     "passengers":  {
+                                                                                                        "type":  "array",
+                                                                                                        "items":  {
+                                                                                                                      "$ref":  "#/components/schemas/PassengerInfo"
+                                                                                                                  }
+                                                                                                    },
+                                                                                     "routeDistanceInKm":  {
+                                                                                                               "type":  "number",
+                                                                                                               "format":  "double"
+                                                                                                           },
+                                                                                     "routeDurationInMinutes":  {
+                                                                                                                    "type":  "number",
+                                                                                                                    "format":  "double"
+                                                                                                                },
+                                                                                     "pricePerKm":  {
+                                                                                                        "type":  "number",
+                                                                                                        "format":  "double"
+                                                                                                    },
+                                                                                     "estimatedEarnings":  {
+                                                                                                               "type":  "number",
+                                                                                                               "format":  "double"
+                                                                                                           }
+                                                                                 }
+                                                              },
+                                       "PassengerInfo":  {
+                                                             "type":  "object",
+                                                             "properties":  {
+                                                                                "userId":  {
+                                                                                               "type":  "string"
+                                                                                           },
+                                                                                "bookedSeats":  {
+                                                                                                    "type":  "integer",
+                                                                                                    "format":  "int32"
+                                                                                                },
+                                                                                "pickupLocation":  {
+                                                                                                       "$ref":  "#/components/schemas/Points"
+                                                                                                   },
+                                                                                "dropoffLocation":  {
+                                                                                                        "$ref":  "#/components/schemas/Points"
+                                                                                                    }
+                                                                            }
+                                                         },
+                                       "ApiResponseListPassengerRideResponse":  {
+                                                                                    "type":  "object",
+                                                                                    "properties":  {
+                                                                                                       "data":  {
+                                                                                                                    "type":  "array",
+                                                                                                                    "items":  {
+                                                                                                                                  "$ref":  "#/components/schemas/PassengerRideResponse"
+                                                                                                                              }
+                                                                                                                },
+                                                                                                       "error":  {
+                                                                                                                     "$ref":  "#/components/schemas/ApiError"
+                                                                                                                 },
+                                                                                                       "message":  {
+                                                                                                                       "type":  "string"
+                                                                                                                   },
+                                                                                                       "timestamp":  {
+                                                                                                                         "type":  "string",
+                                                                                                                         "format":  "date-time"
+                                                                                                                     }
+                                                                                                   }
+                                                                                },
+                                       "DriverDetails":  {
+                                                             "type":  "object",
+                                                             "properties":  {
+                                                                                "name":  {
+                                                                                             "type":  "string"
+                                                                                         },
+                                                                                "rating":  {
+                                                                                               "type":  "number",
+                                                                                               "format":  "double"
+                                                                                           },
+                                                                                "totalTrips":  {
+                                                                                                   "type":  "integer",
+                                                                                                   "format":  "int32"
+                                                                                               }
+                                                                            }
+                                                         },
+                                       "PassengerRideResponse":  {
+                                                                     "type":  "object",
+                                                                     "properties":  {
+                                                                                        "rideId":  {
+                                                                                                       "type":  "string"
+                                                                                                   },
+                                                                                        "tripId":  {
+                                                                                                       "type":  "string"
+                                                                                                   },
+                                                                                        "driverId":  {
+                                                                                                         "type":  "string"
+                                                                                                     },
+                                                                                        "vehicleNumber":  {
+                                                                                                              "type":  "string"
+                                                                                                          },
+                                                                                        "rideStatus":  {
+                                                                                                           "type":  "string",
+                                                                                                           "enum":  [
+                                                                                                                        "REQUESTED",
+                                                                                                                        "CONFIRMED",
+                                                                                                                        "IN_PROGRESS",
+                                                                                                                        "COMPLETED",
+                                                                                                                        "CANCELLED"
+                                                                                                                    ]
+                                                                                                       },
+                                                                                        "pickupLocation":  {
+                                                                                                               "$ref":  "#/components/schemas/Points"
+                                                                                                           },
+                                                                                        "dropoffLocation":  {
+                                                                                                                "$ref":  "#/components/schemas/Points"
+                                                                                                            },
+                                                                                        "tripStartDateTime":  {
+                                                                                                                  "type":  "string",
+                                                                                                                  "format":  "date-time",
+                                                                                                                  "example":  "2026-01-11T13:09:26Z"
+                                                                                                              },
+                                                                                        "tripTimezone":  {
+                                                                                                             "type":  "string"
+                                                                                                         },
+                                                                                        "bookedSeats":  {
+                                                                                                            "type":  "integer",
+                                                                                                            "format":  "int32"
+                                                                                                        },
+                                                                                        "rideDistanceInKm":  {
+                                                                                                                 "type":  "number",
+                                                                                                                 "format":  "double"
+                                                                                                             },
+                                                                                        "rideDurationInMinutes":  {
+                                                                                                                      "type":  "number",
+                                                                                                                      "format":  "double"
+                                                                                                                  },
+                                                                                        "pricePerKm":  {
+                                                                                                           "type":  "number",
+                                                                                                           "format":  "double"
+                                                                                                       },
+                                                                                        "estimatedFare":  {
+                                                                                                              "type":  "number",
+                                                                                                              "format":  "double"
+                                                                                                          },
+                                                                                        "driverDetails":  {
+                                                                                                              "$ref":  "#/components/schemas/DriverDetails"
+                                                                                                          }
+                                                                                    }
+                                                                 }
+                                   }
+                   }
+}

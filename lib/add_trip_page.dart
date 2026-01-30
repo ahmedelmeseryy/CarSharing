@@ -34,6 +34,34 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
   @override
   void initState() {
     super.initState();
+    // Listen to state changes for success/error feedback
+    ref.listenManual(offerTripProvider, (previous, next) {
+      if (!mounted) return;
+      
+      next.when(
+        data: (response) {
+          if (response != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Trip created successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            ref.read(offerTripProvider.notifier).reset();
+            Navigator.of(context).pop();
+          }
+        },
+        error: (error, stack) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error creating trip: $error'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        loading: () {},
+      );
+    });
   }
 
   @override
@@ -293,43 +321,11 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
         placeAddress: _toAddressController.text,
       ),
       tripStartDateTime: startDateTimeLocal.toUtc(),
-      offeredSeat: seats,
+      totalSeats: seats,
     );
 
-    try {
-      final notifier = ref.read(offerTripProvider.notifier);
-      await notifier.offerTrip(request);
-
-      if (!mounted) return;
-      final state = ref.read(offerTripProvider);
-      state.when(
-        data: (_) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Trip added successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-          notifier.reset();
-          Navigator.of(context).pop();
-        },
-        error: (error, stack) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error adding trip: $error'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        },
-        loading: () {},
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unexpected error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    // Call offerTrip - the listener will handle success/error
+    final notifier = ref.read(offerTripProvider.notifier);
+    await notifier.offerTrip(request);
   }
 } 

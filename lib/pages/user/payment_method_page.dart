@@ -290,30 +290,25 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
 
       final notifier = ref.read(joinTripProvider.notifier);
       
-      // Call the booking and let it handle the state
-      try {
-        await notifier.joinTrip(request);
-        print('✅ PAYMENT: Booking created successfully');
-        print('📝 PAYMENT: Booking request: tripId=${request.tripId}, passengerId=${request.passengerId}');
-      } catch (bookingError) {
-        // Extract error message from booking error
-        String errorMessage = 'Booking failed';
-        final errorStr = bookingError.toString();
-        
-        if (errorStr.contains('ALREADY_BOOKED')) {
-          errorMessage = 'You have already booked this trip';
-        } else if (errorStr.contains('409')) {
-          errorMessage = 'This trip is no longer available';
-        } else if (errorStr.contains('trip full') || errorStr.contains('Trip full')) {
-          errorMessage = 'This trip is now full';
-        } else {
-          errorMessage = 'Booking failed: ${errorStr.split('\n').first}';
-        }
-        
+      // Call the booking
+      await notifier.joinTrip(request);
+      print('✅ PAYMENT: Booking notifier call completed');
+      
+      // Wait a brief moment for state to update
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Now read the final state
+      final state = ref.read(joinTripProvider);
+      print('✅ PAYMENT: Final state after delay: $state');
+      print('✅ PAYMENT: State hasValue: ${state.hasValue}, State.hasError: ${state.hasError}');
+      
+      // Handle the state
+      if (state.hasError) {
+        print('❌ PAYMENT: State has error: ${state.error}');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(errorMessage),
+            content: Text('Booking error: ${state.error}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 4),
           ),
@@ -325,43 +320,15 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
         }
         return;
       }
-
-      // If we get here, booking was successful
-      final state = ref.read(joinTripProvider);
       
-      if (state.hasValue && state.value != null) {
-        if (!mounted) return;
-        
-        // Add to local cache (workaround for backend issue where bookings don't appear immediately)
-        ref.read(localBookingsCacheProvider(userId).notifier).addBooking(state.value!);
-        
-        // Invalidate the bookings cache so it refetches
-        ref.invalidate(getUpcomingBookingsForPassengerProvider(userId));
-        
-        // Navigate to confirmation page
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => BookingConfirmationPage(
-                trip: widget.trip,
-                selectedSeats: widget.selectedSeats,
-                paymentMethod: _selectedMethod == PaymentMethod.cash
-                    ? 'Cash'
-                    : 'Credit/Debit Card',
-                booking: state.value!,
-              ),
-            ),
-          );
-        }
-      } else {
-        if (!mounted) return;
-        // Fallback for unexpected state
+      if (!state.hasValue || state.value == null) {
+        print('⚠️ PAYMENT: State has no value');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Booking completed but could not load details.'),
-            backgroundColor: Colors.orange,
+            content: Text('Booking in progress...'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 1),
           ),
         );
         if (mounted) {
@@ -369,6 +336,44 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
             _isProcessing = false;
           });
         }
+        return;
+      }
+      
+      // Success case
+      final booking = state.value!;
+      print('✅ PAYMENT: Booking successful, rideId: ${booking.rideId}');
+      
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip booked successfully! ✅'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      // Add to local cache
+      ref.read(localBookingsCacheProvider(userId).notifier).addBooking(booking);
+      
+      // Invalidate bookings cache
+      ref.invalidate(getUpcomingBookingsForPassengerProvider(userId));
+      
+      // Navigate to confirmation page
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => BookingConfirmationPage(
+              trip: widget.trip,
+              selectedSeats: widget.selectedSeats,
+              paymentMethod: _selectedMethod == PaymentMethod.cash
+                  ? 'Cash'
+                  : 'Credit/Debit Card',
+              booking: booking,
+            ),
+          ),
+        );
       }
     } catch (e) {
       if (!mounted) return;

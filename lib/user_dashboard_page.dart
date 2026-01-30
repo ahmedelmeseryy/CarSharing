@@ -7,6 +7,7 @@ import 'package:carsharing/pages/user/trip_search_test_page.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
+import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 
 class UserDashboardPage extends StatefulWidget {
   final int initialIndex;
@@ -213,12 +214,36 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
             data: (data) {
               var bookings = (data as List).cast<PassengerRideResponse>();
               
-              // Merge with local bookings (workaround for backend issue)
-              bookings = [...bookings, ...localBookings];
-              
-              print('✅ DEBUG: Received ${bookings.length} bookings (${(data as List).length} from API + ${localBookings.length} from cache)');
+              // Clear local cache since API has the bookings
+              // (The local cache is only a workaround for backend lag)
               if (bookings.isNotEmpty) {
-                print('📌 First booking: ${bookings[0].tripId}');
+                Future.microtask(() {
+                  ref.read(localBookingsCacheProvider(userId).notifier).clearCache();
+                });
+              }
+              
+              // Deduplicate by tripId (in case there are duplicates in API response)
+              final seen = <String>{};
+              bookings = bookings.where((b) {
+                if (seen.contains(b.tripId)) {
+                  print('⚠️ DEBUG: Duplicate tripId found: ${b.tripId}, removing');
+                  return false;
+                }
+                seen.add(b.tripId);
+                return true;
+              }).toList();
+              
+              // Merge with local bookings (only those not in API)
+              final apiTripIds = bookings.map((b) => b.tripId).toSet();
+              final uniqueLocalBookings = localBookings
+                  .where((b) => !apiTripIds.contains(b.tripId))
+                  .toList();
+              
+              bookings = [...bookings, ...uniqueLocalBookings];
+              
+              print('✅ DEBUG: Received ${bookings.length} bookings (${(data as List).length} from API, deduplicated to ${seen.length}, + ${uniqueLocalBookings.length} from cache)');
+              if (bookings.isNotEmpty) {
+                print('📌 First booking tripId: ${bookings[0].tripId}');
               }
 
               if (bookings.isEmpty) {
@@ -229,12 +254,29 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
                   },
                   child: ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 80),
-                      Center(
+                    children: [
+                      const SizedBox(height: 60),
+                      const Center(
+                        child: Icon(Icons.event_busy, size: 64, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 16),
+                      const Center(
                         child: Text(
                           'You have no booked trips yet.',
                           style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32),
+                          child: Text(
+                            localBookings.isNotEmpty 
+                              ? 'Your recent bookings are shown below (syncing with backend...)'
+                              : 'Search for trips and book one to get started!',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
                         ),
                       ),
                     ],
@@ -259,7 +301,7 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
                             .add_Hm()
                             .format(parsedTripDate.toLocal())
                         : booking.tripStartDateTime;
-                    final fare = booking.estimatedFare.toStringAsFixed(2);
+                    final fare = (booking.estimatedFare ?? 0.0).toStringAsFixed(2);
 
                     return Card(
                       elevation: 2,
@@ -388,6 +430,78 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
                                 ),
                               ),
                             ),
+                            if (booking.isActive) ...[
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.cancel, size: 18),
+                                  label: const Text('Cancel booking'),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.red.shade700,
+                                    side: BorderSide(color: Colors.red.shade200),
+                                  ),
+                                  onPressed: () async {
+                                    final confirm = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Cancel booking?'),
+                                        content: const Text(
+                                          'Are you sure you want to cancel this booking?',
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: const Text('No'),
+                                          ),
+                                          ElevatedButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            child: const Text('Yes, cancel'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+
+                                    if (confirm != true) return;
+
+                                    try {
+                                      final request = CancelTripRequest(
+                                        userId: userId,
+                                        tripId: booking.tripId,
+                                        rideId: booking.rideId,
+                                        cancellationReason: 'User cancelled',
+                                      );
+
+                                      final message = await ref
+                                          .read(bookingRepositoryProvider)
+                                          .cancelBooking(request);
+
+                                      if (!mounted) return;
+
+                                      ref
+                                          .read(localBookingsCacheProvider(userId).notifier)
+                                          .removeBooking(
+                                            rideId: booking.rideId,
+                                            tripId: booking.tripId,
+                                          );
+
+                                      ref.invalidate(
+                                        getUpcomingBookingsForPassengerProvider(userId),
+                                      );
+
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text(message)),
+                                      );
+                                    } catch (e) {
+                                      if (!mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Cancel failed: $e')),
+                                      );
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

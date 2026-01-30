@@ -55,8 +55,15 @@ class JoinTripNotifier
   /// - Returns the booking confirmation
   Future<void> joinTrip(JoinTripRequest request) async {
     state = const AsyncValue.loading();
+    print('🔄 NOTIFIER: joinTrip starting, state = loading');
     state = await AsyncValue.guard(
       () => _ref.read(bookingRepositoryProvider).joinTrip(request),
+    );
+    print('📢 NOTIFIER: joinTrip completed, state = $state');
+    state.when(
+      data: (data) => print('✅ NOTIFIER: joinTrip data: ${data?.rideId}'),
+      error: (err, stack) => print('❌ NOTIFIER: joinTrip error: $err'),
+      loading: () => print('⏳ NOTIFIER: joinTrip loading'),
     );
   }
 
@@ -72,7 +79,7 @@ class JoinTripNotifier
 /// await notifier.joinTrip(joinTripRequest);
 /// final booking = ref.watch(joinTripProvider);
 /// ```
-final joinTripProvider = StateNotifierProvider.autoDispose<
+final joinTripProvider = StateNotifierProvider<
     JoinTripNotifier,
     AsyncValue<PassengerRideResponse?>>((ref) {
   return JoinTripNotifier(ref);

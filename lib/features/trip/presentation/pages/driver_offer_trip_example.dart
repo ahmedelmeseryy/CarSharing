@@ -304,7 +304,7 @@ class DriverUpcomingTripsExample extends ConsumerWidget {
                           ),
                           _buildDetailRow(
                             'Available / Total Seats',
-                            '${trip.availableSeats} / ${trip.offeredSeat}',
+                            '${trip.availableSeats} / ${trip.totalSeats}',
                           ),
                           _buildDetailRow(
                             'Est. Earnings',

@@ -99,7 +99,8 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
       try {
         if (_fromLatitude == null || _fromLongitude == null || _toLatitude == null || _toLongitude == null) {
           if (!context.mounted) return;
-          Navigator.pop(context);
+          // Close loading dialog first
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Please select locations from the autocomplete or map to search.'),
@@ -113,7 +114,8 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
         final userId = await tokenStorage.getUserId();
         if (userId == null || userId.isEmpty) {
           if (!context.mounted) return;
-          Navigator.pop(context);
+          // Close loading dialog first
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Could not determine user id. Please re-login.'),
@@ -123,17 +125,34 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
           return;
         }
 
-        final baseDate = _selectedDate ?? DateTime.now();
-        final baseTime = _selectedTime ?? TimeOfDay.now();
-        final combinedLocal = DateTime(
-          baseDate.year,
-          baseDate.month,
-          baseDate.day,
-          baseTime.hour,
-          baseTime.minute,
-        );
-        final rideStartIso = combinedLocal.toUtc().toIso8601String();
+        // If date/time not selected, use current time to match all upcoming trips
+        // Otherwise use selected date/time
+        String rideStartIso;
+        if (_selectedDate == null || _selectedTime == null) {
+          // Use current date/time to get all upcoming trips
+          final now = DateTime.now();
+          rideStartIso = now.toUtc().toIso8601String();
+          print('🔍 No date/time selected, using current time: $rideStartIso');
+        } else {
+          final combinedLocal = DateTime(
+            _selectedDate!.year,
+            _selectedDate!.month,
+            _selectedDate!.day,
+            _selectedTime!.hour,
+            _selectedTime!.minute,
+          );
+          rideStartIso = combinedLocal.toUtc().toIso8601String();
+          print('🔍 Searching for trips at: $combinedLocal (UTC: $rideStartIso)');
+        }
 
+        print('🔍 Search Parameters:');
+        print('  From: ${_fromController.text} ($_fromLatitude, $_fromLongitude)');
+        print('  To: ${_toController.text} ($_toLatitude, $_toLongitude)');
+        print('  Source Radius: $_sourceRadiusKm km');
+        print('  Destination Radius: $_destRadiusKm km');
+        print('  Requested Seats: $_selectedSeats');
+        print('  User ID: $userId');
+        
         final repository = ref.read(tripRepositoryProvider);
         final trips = await repository.searchMatchingRoute(
           sourceLat: _fromLatitude!,
@@ -146,27 +165,46 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
           rideStartTime: rideStartIso,
           effectiveUserId: userId,
         );
+        
+        print('🔍 Found ${trips.length} trips from API');
 
         // Filter by price range and seats
         final filtered = trips.where((trip) {
           final fare = trip.estimatedFare;
           if (fare < _selectedMinPrice || fare > _selectedMaxPrice) {
+            print('  ❌ Trip ${trip.tripId} filtered out by price: $fare (range: $_selectedMinPrice-$_selectedMaxPrice)');
             return false;
           }
           if (trip.availableSeats < _selectedSeats) {
+            print('  ❌ Trip ${trip.tripId} filtered out by seats: ${trip.availableSeats} < $_selectedSeats');
             return false;
           }
           return true;
         }).toList();
+        
+        print('🔍 After filtering: ${filtered.length} trips match criteria');
+        print('  Price range: $_selectedMinPrice - $_selectedMaxPrice');
+        print('  Min seats: $_selectedSeats');
 
         if (!context.mounted) return;
-        Navigator.pop(context);
-
+        
+        // Close loading dialog
+        Navigator.of(context).pop();
+        
         if (filtered.isEmpty) {
+          // Provide helpful message based on results
+          String message;
+          if (trips.isEmpty) {
+            message = 'No trips found within $_sourceRadiusKm km of your origin and $_destRadiusKm km of your destination. Try increasing the search radius in advanced filters.';
+          } else {
+            message = 'Found ${trips.length} trip(s) but none match your filters. Try adjusting price range or number of seats.';
+          }
+          
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No matching trips found. Try adjusting your search or filters.'),
+            SnackBar(
+              content: Text(message),
               backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 5),
             ),
           );
           return;
@@ -183,8 +221,13 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
           ),
         );
       } catch (e) {
-        if (!context.mounted) return;
-        Navigator.pop(context);
+        if (!mounted) return;
+        // Close loading dialog if still open
+        try {
+          Navigator.of(context).pop();
+        } catch (e) {
+          // Dialog may already be closed
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error searching trips: $e'),

@@ -76,7 +76,7 @@ Users should be able to:
 ## 3. 🐛 Critical Bug: Bookings Not Appearing in Lists
 
 **Affected Endpoints:**  
-- `GET /trip-service/api/bookings/upcoming/passenger/{passengerId}` (passenger side)
+- `GET /trip-service/api/bookings/active/passenger/{passengerId}` (passenger side)
 - Presumably also driver-side endpoint for viewing trip passengers
 
 **Current Behavior:**  
@@ -84,25 +84,21 @@ Users should be able to:
    - Returns **HTTP 201 Created** with booking details
    - Response includes `rideId`, `tripId`, `rideStatus`, etc.
 
-2. Immediately querying bookings list: `GET /trip-service/api/bookings/upcoming/passenger/{passengerId}`
-   - Returns **empty array**: `{"data": [], "message": "ArrayList has been returned"}`
-   - Booking does **NOT appear** in the list
-
-3. Driver cannot see passengers who booked their trips
+2. Querying bookings list: `GET /trip-service/api/bookings/active/passenger/{passengerId}`
+   - Returns **HTTP 404 Not Found**
+   - Endpoint does **NOT exist** on the backend
 
 **Expected Behavior:**  
-- Newly created bookings should **immediately appear** in list endpoints
-- Driver should see all passengers who have booked their trips
+- Endpoint should return `HTTP 200` with list of bookings
+- Newly created bookings should **immediately appear** in list
+- Driver should see all passengers who booked their trips
 
-**Possible Root Causes:**
-- Database transaction not committing before read
-- Read/write database inconsistency (separate replicas?)
-- Query filtering out valid bookings (status check, date filter issue)
-- Booking being written to wrong collection/table
+**Root Cause:**
+- **The `/trip-service/api/bookings/active/passenger/{passengerId}` endpoint is not implemented/deployed on the backend**
 
 **Test Case:**
 ```bash
-# 1. Create booking
+# 1. Create booking (works)
 curl -X POST http://34.160.91.182/trip-service/api/bookings/join \
   -H "Authorization: Bearer ${TOKEN}" \
   -H "Content-Type: application/json" \
@@ -114,18 +110,77 @@ curl -X POST http://34.160.91.182/trip-service/api/bookings/join \
   }'
 # Response: 201 Created, rideId: "abc-123"
 
-# 2. Query bookings (should include "abc-123" but returns empty)
-curl http://34.160.91.182/trip-service/api/bookings/upcoming/passenger/rhPRMNYhfAbi82xzbuYvKySEvWw1 \
+# 2. Query bookings (FAILS with 404)
+curl http://34.160.91.182/trip-service/api/bookings/active/passenger/rhPRMNYhfAbi82xzbuYvKySEvWw1 \
   -H "Authorization: Bearer ${TOKEN}"
-# Response: {"data": []}  ← BUG: Should return the booking created above
+# Response: 404 Not Found  ← ENDPOINT DOESN'T EXIST
 ```
 
+**Action Required:**
+Please implement and deploy the following endpoints:
+- `GET /trip-service/api/bookings/active/passenger/{passengerId}` - List passenger's active bookings
+- `GET /trip-service/api/trips/{tripId}/bookings` - List passengers for a driver's trip
+
 **Workaround Implemented (Client-Side):**  
-We've added local caching to show bookings immediately after creation, but this is a **temporary fix**. The backend must be corrected.
+We've added local caching to show bookings immediately after creation, but this is a **temporary fix**. The backend endpoints must be implemented.
 
 ---
 
-## 4. 🔐 Authentication: Driver/User Role Selection
+## 4. � Critical Bug: Trip Search Returns Internal Server Error
+
+**Affected Endpoint:**  
+`GET /trip-service/api/trips/search/matching-route`
+
+**Current Behavior:**  
+The endpoint returns **HTTP 400 Bad Request** with an internal server error when valid parameters are provided.
+
+**Test Case:**
+```bash
+curl "http://34.160.91.182/trip-service/api/trips/search/matching-route?\
+sourceLatitude=50.8090106&\
+sourceLongitude=8.7704695&\
+sourceRadiusKm=10.0&\
+destinationLatitude=50.1106444&\
+destinationLongitude=8.6820917&\
+destinationRadiusKm=10.0&\
+earliestDepartureTime=2026-01-11T16:21:00.000Z&\
+requestedSeats=1" \
+  -H "Authorization: Bearer ${TOKEN}"
+
+# Response: 400 Bad Request
+{
+  "status": 400,
+  "code": "INTERNAL_SERVER_ERROR",
+  "message": "An unexpected error occurred",
+  "timestamp": "2026-01-11T16:21:18.677226165Z"
+}
+```
+
+**Expected Behavior:**  
+Should return **HTTP 200** with a list of matching trips (or empty array if no matches).
+
+**Parameters Sent (All Required by OpenAPI Spec):**
+- `sourceLatitude`: 50.8090106 (double) ✓
+- `sourceLongitude`: 8.7704695 (double) ✓
+- `sourceRadiusKm`: 10.0 (double) ✓
+- `destinationLatitude`: 50.1106444 (double) ✓
+- `destinationLongitude`: 8.6820917 (double) ✓
+- `destinationRadiusKm`: 10.0 (double) ✓
+- `earliestDepartureTime`: 2026-01-11T16:21:00.000Z (ISO string) ✓
+- `requestedSeats`: 1 (integer) ✓
+
+**Root Cause:**  
+Backend has an internal error/exception when processing the search request. The client is sending correct parameters according to the OpenAPI specification.
+
+**Workaround Implemented (Client-Side):**  
+Using alternative endpoints `/search/near-source` and `/search/near-destination` with client-side filtering as a temporary solution.
+
+**Action Required:**  
+Debug and fix the `/matching-route` endpoint to handle the search parameters correctly without throwing internal errors.
+
+---
+
+## 5. �🔐 Authentication: Driver/User Role Selection
 
 **Current Behavior:**  
 - Authentication endpoints exist (`/api/auth/register`, `/api/auth/login`)

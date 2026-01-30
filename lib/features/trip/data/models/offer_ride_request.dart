@@ -52,8 +52,8 @@ class OfferRideRequest {
   @JsonKey(name: 'tripStartDateTime')
   final DateTime tripStartDateTime;
   
-  @JsonKey(name: 'offeredSeat')
-  final int offeredSeat;
+  @JsonKey(name: 'totalSeats')
+  final int totalSeats;
 
   OfferRideRequest({
     required this.driverId,
@@ -61,7 +61,7 @@ class OfferRideRequest {
     required this.sourceAddress,
     required this.destinationAddress,
     required this.tripStartDateTime,
-    required this.offeredSeat,
+    required this.totalSeats,
   });
 
   factory OfferRideRequest.fromJson(Map<String, dynamic> json) => 

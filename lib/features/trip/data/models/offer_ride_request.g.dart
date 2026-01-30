@@ -19,7 +19,7 @@ OfferRideRequest _$OfferRideRequestFromJson(Map<String, dynamic> json) =>
       tripStartDateTime: const DateTimeConverter().fromJson(
         json['tripStartDateTime'] as String,
       ),
-      offeredSeat: (json['offeredSeat'] as num).toInt(),
+      totalSeats: (json['totalSeats'] as num).toInt(),
     );
 
 Map<String, dynamic> _$OfferRideRequestToJson(OfferRideRequest instance) =>
@@ -33,5 +33,5 @@ Map<String, dynamic> _$OfferRideRequestToJson(OfferRideRequest instance) =>
       'tripStartDateTime': const DateTimeConverter().toJson(
         instance.tripStartDateTime,
       ),
-      'offeredSeat': instance.offeredSeat,
+      'totalSeats': instance.totalSeats,
     };

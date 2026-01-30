@@ -68,6 +68,9 @@ void main() {
           destLat: 50.1106444,
           destLon: 8.6820917,
           destRadiusKm: 10.0,
+          rideStartTime: DateTime.now().toUtc().toIso8601String(),
+          requestedSeats: 1,
+          effectiveUserId: 'test_user',
         );
         
         print('✅ Success! Found ${trips.length} trips');
@@ -147,8 +150,9 @@ void main() {
           destLat: 50.1106444,
           destLon: 8.6820917,
           destRadiusKm: 10.0,
-          requestedSeats: 1,
           rideStartTime: DateTime.now().toUtc().toIso8601String(),
+          requestedSeats: 1,
+          effectiveUserId: 'test_user',
         );
         
         print('✅ Response success: ${response.isSuccess}');
