@@ -168,7 +168,7 @@ flutter build ios --release
    - Select pickup and drop-off locations on the map
    - Set date and time
    - Enter vehicle details
-   - Set price per km and available seats
+   - Set trip price and available seats
 3. View your created trips in the **"My Trips"** tab
 4. Tap on a trip to see passenger bookings
 5. Monitor bookings and earnings

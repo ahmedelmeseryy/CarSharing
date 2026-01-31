@@ -70,7 +70,6 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
             const SizedBox(height: 16),
             _buildInfoRow(Icons.calendar_today, 'Date', formattedDate),
             _buildInfoRow(Icons.access_time, 'Time', formattedTime),
-            _buildInfoRow(Icons.euro_symbol, 'Price per km', '€${trip.pricePerKm?.toStringAsFixed(2) ?? 'N/A'}'),
             _buildInfoRow(Icons.event_seat, 'Offered Seats', '${trip.totalSeats}'),
             _buildInfoRow(Icons.people, 'Booked Seats', '${trip.bookedSeats}'),
             _buildInfoRow(Icons.event_available, 'Available Seats', '${trip.availableSeats}'),
