@@ -309,9 +309,15 @@ flutter test integration_test/
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 📄 License
+## 📄 Academic Project
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project was developed under the supervision of the Computer Science Department at Philipps-Universität Marburg, Germany.
+
+- **Institution:** Philipps-Universität Marburg
+- **Department:** Computer Science (Fachbereich Mathematik und Informatik)
+- **Purpose:** Educational and research purposes
+
+All rights reserved. This project is for academic use and demonstration purposes only.
 
 ## 👥 Authors
 
@@ -328,7 +334,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For issues, questions, or suggestions:
 - Open an issue on [GitHub](https://github.com/ahmedelmeseryy/CarSharing/issues)
-- Contact: ahmedelmeseryy@gmail.com
+- Contact: elmesery72@gmail.com
 
 ---
 
