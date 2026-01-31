@@ -1,5 +1,8 @@
 # Car Sharing Mobile App
 
+> ⚠️ **Educational Project - Under Development**  
+> This project is created for educational purposes and is currently under active development. Features may be incomplete, and the application is not intended for production use.
+
 A feature-rich car-sharing application built with Flutter, designed to connect drivers with passengers. The app provides a seamless experience for both creating and booking trips, with dedicated interfaces for user and driver roles.
 
 ## 🚀 Key Features
@@ -329,4 +332,13 @@ For issues, questions, or suggestions:
 
 ---
 
-**Note:** This is an educational project. Ensure you comply with OpenStreetMap's [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) and Nominatim's [Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) when deploying to production.
+## ⚠️ Important Notice
+
+**This is an educational project currently under active development.**
+
+- **Purpose:** Created for learning and demonstration purposes
+- **Status:** Work in progress - features may be incomplete or subject to change
+- **Not Production Ready:** This application is not intended for commercial or production use
+- **API Compliance:** If you use this code, ensure you comply with OpenStreetMap's [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) and Nominatim's [Usage Policy](https://operations.osmfoundation.org/policies/nominatim/)
+
+Contributions, feedback, and learning from this project are welcome!
