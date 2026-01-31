@@ -42,34 +42,31 @@ A feature-rich car-sharing application built with Flutter, designed to connect d
 - **Authentication:** Firebase Authentication + REST API
 - **Database:** Backend REST API (replacing Firebase Firestore)
 - **Maps & Location:**
-    - Google Maps for route visualization
-    - Google Places API for location search
-    - OpenStreetMap Nominatim for address suggestions
+    - OpenStreetMap (flutter_map) for map visualization
+    - OpenStreetMap Nominatim for address autocomplete
     - Geolocator for GPS tracking
 
 ### Key Packages
 - `flutter_riverpod`: State management
 - `dio`: HTTP client for REST API calls
 - `firebase_auth`: User authentication
-- `google_maps_flutter`: Map integration
+- `firebase_core`: Firebase initialization
+- `flutter_map`: OpenStreetMap integration
 - `geolocator`: GPS location access
-- `google_places_flutter`: Location autocomplete
 - `intl`: Date and time formatting
 - `json_annotation`: JSON serialization
 - `flutter_secure_storage`: Secure token storage
+- `http`: HTTP requests for geocoding
+- `latlong2`: Latitude/longitude handling
 
 ## 📋 Prerequisites
 
-Before you begin, ensure you have the following installed:
 - **Flutter SDK** (3.0 or higher) - [Install Flutter](https://flutter.dev/docs/get-started/install)
 - **Android Studio** or **VS Code** with Flutter extensions
 - **Git**
-- **Firebase Project** (for authentication)
-- **Google Cloud Console Project** (for Maps & Places API)
-- **REST API Backend** (see Backend Requirements below)
 
 ### Backend Requirements
-The app requires a REST API backend with the following endpoints:
+The app connects to a REST API backend with the following endpoints:
 - `POST /api/auth/register` - User registration
 - `POST /api/auth/login` - User login
 - `GET /api/trips/search` - Search for trips
@@ -92,62 +89,9 @@ cd CarSharing
 flutter pub get
 ```
 
-### 3. Firebase Setup
+### 3. Configure Backend API URL
 
-#### Create a Firebase Project
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project or use existing one
-3. Enable **Authentication** with Email/Password sign-in method
-
-#### Add Firebase to Your App
-
-**For Android:**
-1. Download `google-services.json` from Firebase Console
-2. Place it in `android/app/`
-
-**For iOS:**
-1. Download `GoogleService-Info.plist` from Firebase Console
-2. Place it in `ios/Runner/`
-
-### 4. Google Maps & Places API Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable the following APIs:
-   - Maps SDK for Android
-   - Maps SDK for iOS
-   - Places API
-   - Geocoding API
-
-4. Create API credentials:
-   - Go to **Credentials** → **Create Credentials** → **API Key**
-   - Restrict the API key (recommended):
-     - For Android: Add your app's package name and SHA-1 fingerprint
-     - For iOS: Add your app's bundle identifier
-
-5. Add API keys to your project:
-
-**For Android** (`android/app/src/main/AndroidManifest.xml`):
-```xml
-<manifest>
-    <application>
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_ANDROID_API_KEY"/>
-    </application>
-</manifest>
-```
-
-**For iOS** (`ios/Runner/AppDelegate.swift`):
-```swift
-import GoogleMaps
-
-GMSServices.provideAPIKey("YOUR_IOS_API_KEY")
-```
-
-### 5. Backend API Configuration
-
-Update the API base URL in the app:
+The app needs to connect to your backend server. Update the API base URL:
 
 1. Open `lib/core/network/dio_client.dart`
 2. Update the `baseUrl` to point to your backend:
@@ -156,31 +100,43 @@ static const String baseUrl = 'http://your-backend-api.com';
 ```
 
 **For local development:**
-- Use `http://10.0.2.2:8080` for Android Emulator
-- Use `http://localhost:8080` for iOS Simulator
-- Use your machine's IP address for physical devices (e.g., `http://192.168.1.100:8080`)
+- **Android Emulator:** Use `http://10.0.2.2:8080`
+- **iOS Simulator:** Use `http://localhost:8080`
+- **Physical Device:** Use your machine's IP address (e.g., `http://192.168.1.100:8080`)
 
-### 6. Run Code Generation (if needed)
-If you make changes to models with JSON serialization:
-```bash
-flutter pub run build_runner build --delete-conflicting-outputs
-```
+### 4. Firebase Configuration (Already Set Up)
 
-## 🚀 Running the App
+The project already includes Firebase configuration files:
+- `android/app/google-services.json` (Android)
+- `ios/Runner/GoogleService-Info.plist` (iOS)
 
-### Debug Mode
+**Note:** If you want to use your own Firebase project:
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create/select a project
+3. Enable **Authentication** with Email/Password
+4. Download and replace the configuration files
+
+### 5. Run the App
+
 ```bash
 flutter run
 ```
 
-### Release Mode (Android)
+That's it! The app should launch on your connected device or emulator.
+
+## 🚀 Building for Release
+
+### Android APK
 ```bash
 flutter build apk --release
-# or for app bundle
+```
+
+### Android App Bundle
+```bash
 flutter build appbundle --release
 ```
 
-### Release Mode (iOS)
+### iOS
 ```bash
 flutter build ios --release
 ```
@@ -283,15 +239,16 @@ flutter pub get
 flutter run
 ```
 
-**2. Google Maps not showing:**
-- Verify API keys are correctly configured
-- Check that Maps SDK is enabled in Google Cloud Console
-- Ensure billing is enabled on your Google Cloud project
+**2. Maps not showing:**
+- Check internet connection (OpenStreetMap tiles require network)
+- Verify location permissions are granted
+- Ensure GPS is enabled on device
 
 **3. Backend connection issues:**
 - Check that backend URL is correct in `dio_client.dart`
 - For Android emulator, use `10.0.2.2` instead of `localhost`
 - Ensure backend server is running and accessible
+- Check firewall settings
 
 **4. Authentication errors:**
 - Verify Firebase project configuration
@@ -301,7 +258,7 @@ flutter run
 **5. Location services not working:**
 - Grant location permissions when prompted
 - Enable GPS on your device
-- For iOS: Add location usage descriptions in `Info.plist`
+- For iOS: Location usage descriptions are in `Info.plist`
 
 ### Build Issues
 
@@ -324,15 +281,20 @@ flutter clean
 flutter pub get
 ```
 
-## 📝 Testing
+## 📝 Development
 
-Run unit tests:
+### Running Code Generation
+If you modify models with JSON serialization:
 ```bash
-flutter test
+flutter pub run build_runner build --delete-conflicting-outputs
 ```
 
-Run integration tests:
+### Running Tests
 ```bash
+# Unit tests
+flutter test
+
+# Integration tests
 flutter test integration_test/
 ```
 
@@ -354,9 +316,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🙏 Acknowledgments
 
-- OpenStreetMap for Nominatim geocoding service
-- Google Maps Platform for mapping and location services
+- OpenStreetMap for map tiles and Nominatim geocoding service
 - Flutter team for the amazing framework
+- Firebase for authentication services
 - All contributors who have helped with the project
 
 ## 📞 Support
@@ -367,4 +329,4 @@ For issues, questions, or suggestions:
 
 ---
 
-**Note:** This is an educational project. Ensure you comply with all API terms of service and rate limits when deploying to production.
+**Note:** This is an educational project. Ensure you comply with OpenStreetMap's [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) and Nominatim's [Usage Policy](https://operations.osmfoundation.org/policies/nominatim/) when deploying to production.
