@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:carsharing/pages/user/tabs/welcome_tab.dart';
+import 'package:carsharing/pages/user/tabs/available_trips_tab.dart';
+import 'package:carsharing/pages/user/trip_search_page.dart';
+import 'package:carsharing/pages/user/trip_search_test_page.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
@@ -18,6 +20,7 @@ class UserDashboardPage extends StatefulWidget {
 
 class _UserDashboardPageState extends State<UserDashboardPage> {
   late int _selectedIndex;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -25,11 +28,78 @@ class _UserDashboardPageState extends State<UserDashboardPage> {
     _selectedIndex = widget.initialIndex;
   }
 
-  static const List<Widget> _widgetOptions = <Widget>[
-    WelcomeTab(),
-    BookedTripsPage(),
-    FavoriteTripsPage(),
-    ProfilePage(),
+  Widget _getAvailableTripsWidget() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Available Trips'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            tooltip: 'Debug Search',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TripSearchTestPage(),
+                ),
+              );
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Advanced Search',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const TripSearchPage(),
+                ),
+              );
+            },
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search by city...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+        ),
+      ),
+      body: AvailableTripsTab(searchQuery: _searchQuery),
+    );
+  }
+
+  static List<Widget> _getWidgetOptions(String searchQuery) => <Widget>[
+    AvailableTripsTab(searchQuery: searchQuery),
+    const BookedTripsPage(),
+    const FavoriteTripsPage(),
+    const ProfilePage(),
   ];
 
   void _onItemTapped(int index) {
@@ -43,12 +113,14 @@ class _UserDashboardPageState extends State<UserDashboardPage> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-        body: _widgetOptions.elementAt(_selectedIndex),
+        body: _selectedIndex == 0 
+            ? _getAvailableTripsWidget()
+            : _getWidgetOptions(_searchQuery).elementAt(_selectedIndex),
         bottomNavigationBar: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
             BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
+              icon: Icon(Icons.search),
+              label: 'Available',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.history),

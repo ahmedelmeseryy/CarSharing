@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:carsharing/features/trip/data/models/trip.dart';
+import 'package:carsharing/features/booking/data/models/booking_response.dart';
 
 class DriverTripDetailsPage extends StatefulWidget {
-  final Trip trip;
+  final DriverTripResponse trip;
 
   const DriverTripDetailsPage({
     super.key,
@@ -38,23 +37,24 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
 
   Widget _buildTripInfoCard() {
     final trip = widget.trip;
-    final from = trip.sourceAddress?.placeAddress ?? 'N/A';
-    final to = trip.destinationAddress?.placeAddress ?? 'N/A';
+    final from = trip.sourceAddress.placeAddress ?? 'N/A';
+    final to = trip.destinationAddress.placeAddress ?? 'N/A';
     
     String formattedDate = 'N/A';
     String formattedTime = 'N/A';
-    if (trip.tripStartDateTime != null) {
-      formattedDate = DateFormat.yMMMMEEEEd().format(trip.tripStartDateTime!);
-      formattedTime = DateFormat.jm().format(trip.tripStartDateTime!);
+    final parsedDate = DateTime.tryParse(trip.tripStartDateTime);
+    if (parsedDate != null) {
+      formattedDate = DateFormat.yMMMMEEEEd().format(parsedDate.toLocal());
+      formattedTime = DateFormat.jm().format(parsedDate.toLocal());
     }
 
-    final distance = trip.routeDistance != null 
-        ? '${(trip.routeDistance! / 1000).toStringAsFixed(1)} km' 
-        : 'N/A';
+    final distance = trip.routeDistanceInKm != null 
+      ? '${trip.routeDistanceInKm!.toStringAsFixed(1)} km' 
+      : 'N/A';
     
-    final duration = trip.routeDuration != null
-        ? '${(trip.routeDuration! / 60).toStringAsFixed(0)} min'
-        : 'N/A';
+    final duration = trip.routeDurationInMinutes != null
+      ? '${trip.routeDurationInMinutes!.toStringAsFixed(0)} min'
+      : 'N/A';
 
     return Card(
       elevation: 4,
@@ -86,7 +86,7 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
 
   Widget _buildBookingsSection() {
     final trip = widget.trip;
-    final joinedRiders = trip.joinedRidersId ?? [];
+    final passengers = trip.passengers ?? [];
     
     return Card(
       elevation: 4,
@@ -109,7 +109,7 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${joinedRiders.length} ${joinedRiders.length == 1 ? 'booking' : 'bookings'}',
+                    '${passengers.length} ${passengers.length == 1 ? 'booking' : 'bookings'}',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -119,7 +119,7 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
               ],
             ),
             const SizedBox(height: 16),
-            if (joinedRiders.isEmpty)
+            if (passengers.isEmpty)
               const Center(
                 child: Padding(
                   padding: EdgeInsets.all(16.0),
@@ -133,44 +133,28 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: joinedRiders.length,
+                itemCount: passengers.length,
                 itemBuilder: (context, index) {
-                  final riderId = joinedRiders[index].toString();
-                  
-                  return FutureBuilder<DocumentSnapshot>(
-                    future: FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(riderId)
-                        .get(),
-                    builder: (context, snapshot) {
-                      String passengerName = 'Passenger ${index + 1}';
-                      String? email;
-                      
-                      if (snapshot.hasData && snapshot.data!.exists) {
-                        final userData = snapshot.data!.data() as Map<String, dynamic>?;
-                        passengerName = userData?['name'] as String? ?? 'Unknown Passenger';
-                        email = userData?['email'] as String?;
-                      }
-                      
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.blue.shade100,
-                            child: Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.blue,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                  final passenger = passengers[index];
+                  final passengerData = _normalizePassenger(passenger);
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.blue.shade100,
+                        child: Text(
+                          '${index + 1}',
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.bold,
                           ),
-                          title: Text(passengerName),
-                          subtitle: email != null ? Text(email) : null,
-                          trailing: const Icon(Icons.check_circle, color: Colors.green),
                         ),
-                      );
-                    },
+                      ),
+                      title: Text(passengerData.name),
+                      subtitle: _buildPassengerSubtitle(passengerData),
+                      trailing: const Icon(Icons.check_circle, color: Colors.green),
+                    ),
                   );
                 },
               ),
@@ -178,6 +162,55 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
         ),
       ),
     );
+  }
+
+  _PassengerDisplayData _normalizePassenger(dynamic passenger) {
+    if (passenger is Map<String, dynamic>) {
+      final name = (passenger['name'] ??
+              passenger['fullName'] ??
+              passenger['passengerName'] ??
+              passenger['userName'])
+          ?.toString();
+      final email = passenger['email']?.toString();
+      final phone = (passenger['phone'] ?? passenger['phoneNumber'])?.toString();
+      final seats = (passenger['bookedSeats'] ?? passenger['seats'])?.toString();
+      final id = (passenger['passengerId'] ?? passenger['userId'] ?? passenger['id'])?.toString();
+
+      return _PassengerDisplayData(
+        name: name?.isNotEmpty == true ? name! : 'Passenger',
+        email: email,
+        phone: phone,
+        seats: seats,
+        id: id,
+      );
+    }
+
+    return _PassengerDisplayData(
+      name: passenger?.toString() ?? 'Passenger',
+      id: passenger?.toString(),
+    );
+  }
+
+  Widget? _buildPassengerSubtitle(_PassengerDisplayData data) {
+    final details = <String>[];
+    if (data.email != null && data.email!.isNotEmpty) {
+      details.add(data.email!);
+    }
+    if (data.phone != null && data.phone!.isNotEmpty) {
+      details.add(data.phone!);
+    }
+    if (data.seats != null && data.seats!.isNotEmpty) {
+      details.add('Seats: ${data.seats}');
+    }
+    if (details.isEmpty && data.id != null && data.id!.isNotEmpty) {
+      details.add('ID: ${data.id}');
+    }
+
+    if (details.isEmpty) {
+      return null;
+    }
+
+    return Text(details.join(' • '));
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
@@ -194,3 +227,19 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
     );
   }
 } 
+
+class _PassengerDisplayData {
+  final String name;
+  final String? email;
+  final String? phone;
+  final String? seats;
+  final String? id;
+
+  const _PassengerDisplayData({
+    required this.name,
+    this.email,
+    this.phone,
+    this.seats,
+    this.id,
+  });
+}

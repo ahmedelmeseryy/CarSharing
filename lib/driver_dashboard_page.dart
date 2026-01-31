@@ -3,6 +3,7 @@ import 'add_trip_page.dart';
 import 'pages/driver/driver_trip_details_page.dart';
 import 'pages/driver/trip_templates_page.dart';
 import 'pages/admin/seed_trips_page.dart';
+import 'pages/driver/tabs/driver_welcome_tab.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:intl/intl.dart';
@@ -22,6 +23,7 @@ class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
   int _selectedIndex = 0;
 
   static final List<Widget> _widgetOptions = <Widget>[
+    const DriverWelcomeTab(),
     const DriverTripsPage(),
     const ProfilePage(),
   ];
@@ -39,7 +41,7 @@ class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
       child: Scaffold(
       appBar: AppBar(
         title: Text(_getAppBarTitle()),
-        actions: _selectedIndex == 0
+        actions: _selectedIndex == 1
             ? [
                 IconButton(
                   icon: const Icon(Icons.science),
@@ -57,41 +59,12 @@ class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
             : null,
       ),
         body: _widgetOptions.elementAt(_selectedIndex),
-        floatingActionButton: _selectedIndex == 0
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  FloatingActionButton(
-                    heroTag: "templates",
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const TripTemplatesPage(),
-                        ),
-                      );
-                    },
-                    child: const Icon(Icons.bookmark),
-                    tooltip: 'Trip Templates',
-                    backgroundColor: Colors.orange,
-                  ),
-                  const SizedBox(height: 10),
-                  FloatingActionButton(
-                    heroTag: "add_trip",
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const AddTripPage()),
-                      );
-                    },
-                    child: const Icon(Icons.add),
-                    tooltip: 'Add New Trip',
-                  ),
-                ],
-              )
-            : null,
         bottomNavigationBar: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home),
+              label: 'Home',
+            ),
             BottomNavigationBarItem(
               icon: Icon(Icons.drive_eta),
               label: 'My Trips',
@@ -113,8 +86,10 @@ class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
   String _getAppBarTitle() {
     switch (_selectedIndex) {
       case 0:
-        return 'My Created Trips';
+        return 'Welcome';
       case 1:
+        return 'My Created Trips';
+      case 2:
         return 'Profile';
       default:
         return 'Driver Dashboard';
