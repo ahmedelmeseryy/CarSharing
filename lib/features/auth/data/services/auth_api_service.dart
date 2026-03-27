@@ -29,12 +29,14 @@ class AuthApiService {
     final refreshToken = data['refresh_token'] ?? data['refreshToken'];
     final user = data['user'];
     final userId = user['id'] ?? user['uid'] ?? user['userId'];
+    final role = user?['role'] as String?;
 
     if (accessToken != null && refreshToken != null && userId != null) {
       await _tokenStorage.saveTokens(
         accessToken: accessToken,
         refreshToken: refreshToken,
         userId: userId.toString(),
+        userRole: role,
       );
     }
 
@@ -91,12 +93,14 @@ class AuthApiService {
     final refreshToken = data['refresh_token'] ?? data['refreshToken'];
     final user = data['user'];
     final userId = user['id'] ?? user['uid'] ?? user['userId'];
+    final responseRole = user?['role'] as String?;
 
     if (accessToken != null && refreshToken != null && userId != null) {
       await _tokenStorage.saveTokens(
         accessToken: accessToken,
         refreshToken: refreshToken,
         userId: userId.toString(),
+        userRole: responseRole ?? role,
       );
     }
 

@@ -40,7 +40,7 @@ class BookingFirestoreService {
       final snapshot = await _firestore
           .collection('trips')
           .where('joinedRidersId', arrayContains: passengerId)
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'available')
           .orderBy('tripStartDateTime', descending: false)
           .get();
 

@@ -15,6 +15,7 @@ import 'core/pages/api_debug_screen.dart';
 import 'rest_integration_tester.dart';
 import 'core/storage/secure_storage.dart';
 import 'features/auth/data/services/auth_api_service.dart';
+import 'admin_dashboard_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +35,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Kamili Drive',
       theme: ThemeData(
         primarySwatch: Colors.blue,
@@ -78,6 +80,7 @@ class MainApp extends StatelessWidget {
         '/dashboard': (context) => const DashboardPage(),
         '/user-dashboard': (context) => const UserDashboardPage(),
         '/driver-dashboard': (context) => const DriverDashboardPage(),
+        '/admin-dashboard': (context) => const AdminDashboardPage(),
         '/rides': (context) => const RideListPage(),
         '/profile': (context) => const ProfilePage(),
         '/api-debug': (context) => const ApiDebugScreen(),
@@ -251,14 +254,35 @@ class _SignUpPageState extends State<SignUpPage> {
         if (idToken == null || idToken.isEmpty) {
           throw Exception('Failed to get authentication token');
         }
-        
-        // Store token and user info in secure storage for REST API calls
+
+        // Store Firebase token and role in secure storage
         await TokenStorage().saveTokens(
           accessToken: idToken,
           refreshToken: idToken,
           userId: user.uid,
           userRole: _selectedRole,
         );
+
+        // Register user on the REST backend (best-effort; Firebase is primary auth)
+        try {
+          await AuthApiService().register(
+            email: _mailController.text.trim(),
+            password: _passwordController.text.trim(),
+            name: _nameController.text.trim(),
+            surname: _surnameController.text.trim(),
+            age: _ageController.text.trim(),
+            phone: _phoneController.text.trim(),
+            role: _selectedRole,
+            carModel: _selectedRole == 'driver' ? _carModelController.text.trim() : null,
+            carColor: _selectedRole == 'driver' ? _carColorController.text.trim() : null,
+            carYear: _selectedRole == 'driver' ? _carYearController.text.trim() : null,
+            licenseNumber: _selectedRole == 'driver' ? _licenseNumberController.text.trim() : null,
+          );
+        } catch (e) {
+          // REST backend registration failed — Firebase auth still succeeded.
+          // The Firebase token stored above remains valid for API calls.
+          print('⚠️ REST backend registration failed (non-fatal): $e');
+        }
 
         if (!mounted) return;
         
@@ -267,6 +291,8 @@ class _SignUpPageState extends State<SignUpPage> {
         // Navigate to appropriate dashboard based on role
         if (_selectedRole == 'driver') {
           Navigator.pushReplacementNamed(context, '/driver-dashboard');
+        } else if (_selectedRole == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin-dashboard');
         } else {
           Navigator.pushReplacementNamed(context, '/user-dashboard');
         }
@@ -334,35 +360,29 @@ class _SignUpPageState extends State<SignUpPage> {
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: RadioListTile<String>(
-                                  title: const Text('User'),
-                                  subtitle: const Text('Book rides'),
-                                  value: 'user',
-                                  groupValue: _selectedRole,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedRole = value!;
-                                    });
-                                  },
+                          RadioGroup<String>(
+                            groupValue: _selectedRole,
+                            onChanged: (value) {
+                              if (value != null) setState(() => _selectedRole = value);
+                            },
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: RadioListTile<String>(
+                                    title: const Text('User'),
+                                    subtitle: const Text('Book rides'),
+                                    value: 'user',
+                                  ),
                                 ),
-                              ),
-                              Expanded(
-                                child: RadioListTile<String>(
-                                  title: const Text('Driver'),
-                                  subtitle: const Text('Offer rides'),
-                                  value: 'driver',
-                                  groupValue: _selectedRole,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedRole = value!;
-                                    });
-                                  },
+                                Expanded(
+                                  child: RadioListTile<String>(
+                                    title: const Text('Driver'),
+                                    subtitle: const Text('Offer rides'),
+                                    value: 'driver',
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -558,6 +578,9 @@ class _LoginPageState extends State<LoginPage> {
       if (role == 'driver') {
         print('🚗 NAVIGATION: Pushing to /driver-dashboard');
         Navigator.pushReplacementNamed(context, '/driver-dashboard');
+      } else if (role == 'admin') {
+        print('🛡️ NAVIGATION: Pushing to /admin-dashboard');
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
       } else {
         print('👤 NAVIGATION: Pushing to /user-dashboard');
         Navigator.pushReplacementNamed(context, '/user-dashboard');

@@ -46,6 +46,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 240,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -79,6 +80,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 300,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -99,6 +101,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 120,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -126,6 +129,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 180,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -153,6 +157,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 150,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -173,6 +178,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 60,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -200,6 +206,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 210,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -233,6 +240,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 180,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -253,6 +261,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 45,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
 
@@ -292,6 +301,7 @@ class SeedTestTrips {
         'driverId': user.uid,
         'driverName': driverName.isNotEmpty ? driverName : 'Test Driver',
         'estimatedDurationMinutes': 480,
+        'status': 'available',
         'createdAt': FieldValue.serverTimestamp(),
       },
     ];

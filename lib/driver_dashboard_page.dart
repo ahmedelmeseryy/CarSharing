@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
+import 'package:carsharing/features/trip/data/services/trip_firestore_service.dart';
 
 class DriverDashboardPage extends ConsumerStatefulWidget {
   const DriverDashboardPage({super.key});
@@ -110,6 +111,7 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
   @override
   void initState() {
     super.initState();
+    TripFirestoreService().autoMarkCompletedTrips();
     // Listen to cancellation state changes
     ref.listenManual(cancelTripProvider, (previous, next) {
       if (!mounted) return;

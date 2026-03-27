@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:carsharing/features/trip/data/models/offer_ride_request.dart';
 import 'package:carsharing/features/trip/data/models/trip.dart';
+import 'package:carsharing/features/trip/data/models/points.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 
 /// Firestore-based trip service
@@ -26,11 +27,11 @@ class TripFirestoreService {
           'address': request.destinationAddress.placeAddress,
         },
         'tripStartDateTime': request.tripStartDateTime,
-        'offeredSeat': request.offeredSeat,
-        'availableSeat': request.offeredSeat,
+        'offeredSeat': request.totalSeats,
+        'availableSeat': request.totalSeats,
         'joinedRidersId': [],
         'createdAt': FieldValue.serverTimestamp(),
-        'status': 'active',
+        'status': 'available',
       });
       return docRef.id;
     } catch (e) {
@@ -38,10 +39,39 @@ class TripFirestoreService {
     }
   }
 
+  /// Auto-mark any 'available' trips whose date has passed as 'completed'.
+  /// Handles both field names used in the app: 'tripStartDateTime' and 'date'.
+  Future<void> autoMarkCompletedTrips() async {
+    try {
+      final now = Timestamp.now();
+      final snapshot = await _firestore
+          .collection('trips')
+          .where('status', isEqualTo: 'available')
+          .get();
+
+      final batch = _firestore.batch();
+      bool hasUpdates = false;
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data();
+        final tripTime = (data['tripStartDateTime'] as Timestamp?) ??
+            (data['date'] as Timestamp?);
+        if (tripTime != null && tripTime.compareTo(now) < 0) {
+          batch.update(doc.reference, {'status': 'completed'});
+          hasUpdates = true;
+        }
+      }
+
+      if (hasUpdates) await batch.commit();
+    } catch (_) {
+      // Non-fatal — silently ignore
+    }
+  }
+
   /// Cancel a trip
   Future<void> cancelTrip(CancelTripRequest request) async {
     try {
-      await _firestore.collection('trips').doc(request.tripId).delete();
+      await _firestore.collection('trips').doc(request.tripId).update({'status': 'cancelled'});
     } catch (e) {
       throw Exception('Failed to cancel trip: $e');
     }
@@ -53,7 +83,7 @@ class TripFirestoreService {
       final snapshot = await _firestore
           .collection('trips')
           .where('driverId', isEqualTo: driverId)
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'available')
           .orderBy('tripStartDateTime', descending: false)
           .get();
 
@@ -72,7 +102,7 @@ class TripFirestoreService {
     try {
       final snapshot = await _firestore
           .collection('trips')
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'available')
           .get();
 
       final trips = snapshot.docs
@@ -103,7 +133,7 @@ class TripFirestoreService {
     try {
       final snapshot = await _firestore
           .collection('trips')
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'available')
           .get();
 
       final trips = snapshot.docs
@@ -137,7 +167,7 @@ class TripFirestoreService {
     try {
       final snapshot = await _firestore
           .collection('trips')
-          .where('status', isEqualTo: 'active')
+          .where('status', isEqualTo: 'available')
           .get();
 
       final trips = snapshot.docs
@@ -217,25 +247,22 @@ class TripFirestoreService {
     final destData = data['destinationAddress'] as Map<String, dynamic>?;
 
     return Trip(
-      id: doc.id,
+      tripId: doc.id,
+      tripStatus: data['status'] as String? ?? 'available',
       driverId: data['driverId'] ?? '',
       vehicleNumber: data['vehicleNumber'] ?? '',
-      sourceAddress: sourceData != null
-          ? Points(
-              latitude: (sourceData['lat'] as num?)?.toDouble() ?? 0,
-              longitude: (sourceData['lon'] as num?)?.toDouble() ?? 0,
-              placeAddress: sourceData['address'] ?? '',
-            )
-          : null,
-      destinationAddress: destData != null
-          ? Points(
-              latitude: (destData['lat'] as num?)?.toDouble() ?? 0,
-              longitude: (destData['lon'] as num?)?.toDouble() ?? 0,
-              placeAddress: destData['address'] ?? '',
-            )
-          : null,
-      tripStartDateTime: (data['tripStartDateTime'] as Timestamp?)?.toDate(),
-      offeredSeat: (data['offeredSeat'] as num?)?.toInt() ?? 0,
+      sourceAddress: Points(
+        latitude: (sourceData?['lat'] as num?)?.toDouble() ?? 0,
+        longitude: (sourceData?['lon'] as num?)?.toDouble() ?? 0,
+        placeAddress: sourceData?['address'] ?? '',
+      ),
+      destinationAddress: Points(
+        latitude: (destData?['lat'] as num?)?.toDouble() ?? 0,
+        longitude: (destData?['lon'] as num?)?.toDouble() ?? 0,
+        placeAddress: destData?['address'] ?? '',
+      ),
+      tripStartDateTime: (data['tripStartDateTime'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      totalSeats: (data['offeredSeat'] as num?)?.toInt() ?? 0,
       joinedRidersId: List<String>.from(data['joinedRidersId'] ?? []),
     );
   }
