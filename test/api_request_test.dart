@@ -46,7 +46,7 @@ void main() {
           placeAddress: 'Frankfurt, Germany',
         ),
         tripStartDateTime: DateTime.parse('2026-04-04T14:00:00Z'),
-        offeredSeat: 4,
+        totalSeats: 4,
       );
 
       // Act
@@ -60,7 +60,7 @@ void main() {
       expect(json['sourceAddress']['longitude'], isA<double>());
       expect(json['destinationAddress'], isA<Map>());
       expect(json['tripStartDateTime'], equals('2026-04-04T14:00:00Z'));
-      expect(json['offeredSeat'], equals(4));
+      expect(json['totalSeats'], equals(4));
 
       print('✅ OfferRideRequest serializes correctly');
     });
@@ -252,7 +252,7 @@ void main() {
           placeAddress: 'Frankfurt, Germany',
         ),
         tripStartDateTime: DateTime.parse('2026-04-04T14:00:00Z'),
-        offeredSeat: 3,
+        totalSeats: 3,
       );
 
       // Assert - Verify all fields
@@ -265,7 +265,7 @@ void main() {
       expect(request.destinationAddress.latitude, isA<double>());
       expect(request.destinationAddress.longitude, isA<double>());
       expect(request.tripStartDateTime, isA<DateTime>());
-      expect(request.offeredSeat, isA<int>());
+      expect(request.totalSeats, isA<int>());
 
       print('✅ Complete trip creation has all parameters with correct types');
     });

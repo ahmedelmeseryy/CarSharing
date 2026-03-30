@@ -39,48 +39,11 @@ class _SeedTripsPageState extends State<SeedTripsPage> {
   }
 
   Future<void> _clearAllTrips() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All Trips'),
-        content: const Text(
-          'Are you sure you want to delete all your trips? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete All'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
     setState(() {
-      _isLoading = true;
-      _message = null;
+      _isLoading = false;
+      _message = 'Clear trips is not available via the REST API.';
+      _isSuccess = false;
     });
-
-    try {
-      await SeedTestTrips.clearAllTrips();
-      setState(() {
-        _isLoading = false;
-        _message = 'All trips cleared successfully';
-        _isSuccess = true;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _message = 'Error: $e';
-        _isSuccess = false;
-      });
-    }
   }
 
   @override

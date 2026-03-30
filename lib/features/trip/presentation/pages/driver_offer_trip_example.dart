@@ -226,7 +226,7 @@ class _OfferTripExampleState extends ConsumerState<OfferTripExample> {
         placeAddress: 'Munich, Germany',
       ),
       tripStartDateTime: DateTime.parse('2024-01-15T10:00:00Z'),
-      offeredSeat: seats,
+      totalSeats: seats,
     );
 
     notifier.offerTrip(offerRequest);

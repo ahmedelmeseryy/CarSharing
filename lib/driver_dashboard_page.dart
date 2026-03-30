@@ -1,17 +1,14 @@
 import 'package:flutter/material.dart';
-import 'add_trip_page.dart';
 import 'pages/driver/driver_trip_details_page.dart';
-import 'pages/driver/trip_templates_page.dart';
 import 'pages/admin/seed_trips_page.dart';
 import 'pages/driver/tabs/driver_welcome_tab.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
-import 'package:carsharing/features/trip/data/services/trip_firestore_service.dart';
+import 'package:carsharing/core/storage/secure_storage.dart';
 
 class DriverDashboardPage extends ConsumerStatefulWidget {
   const DriverDashboardPage({super.key});
@@ -106,16 +103,21 @@ class DriverTripsPage extends ConsumerStatefulWidget {
 }
 
 class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
-  final user = FirebaseAuth.instance.currentUser;
+  String? _userId;
+
+  Future<void> _loadUserId() async {
+    final id = await TokenStorage().getUserId();
+    if (mounted) setState(() => _userId = id);
+  }
 
   @override
   void initState() {
     super.initState();
-    TripFirestoreService().autoMarkCompletedTrips();
+    _loadUserId();
     // Listen to cancellation state changes
     ref.listenManual(cancelTripProvider, (previous, next) {
       if (!mounted) return;
-      
+
       next.when(
         data: (message) {
           if (message.isNotEmpty) {
@@ -127,8 +129,9 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
                 duration: Duration(seconds: 2),
               ),
             );
-            // Refresh the trips list
-            ref.invalidate(getUpcomingTripsForDriverProvider(user!.uid));
+            if (_userId != null) {
+              ref.invalidate(getUpcomingTripsForDriverProvider(_userId!));
+            }
             ref.read(cancelTripProvider.notifier).reset();
           }
         },
@@ -141,8 +144,9 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
               duration: Duration(seconds: 3),
             ),
           );
-          // Refresh to sync with server state
-          ref.invalidate(getUpcomingTripsForDriverProvider(user!.uid));
+          if (_userId != null) {
+            ref.invalidate(getUpcomingTripsForDriverProvider(_userId!));
+          }
           ref.read(cancelTripProvider.notifier).reset();
         },
         loading: () {},
@@ -171,9 +175,9 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
 
     if (confirmed == true) {
       if (!mounted) return;
-      
+
       final request = CancelTripRequest(
-        userId: user!.uid,
+        userId: _userId ?? '',
         tripId: tripId,
       );
       
@@ -193,15 +197,11 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (user == null) {
-      return const Center(
-        child: Text('Please log in to view your trips.'),
-      );
+    if (_userId == null) {
+      return const Center(child: CircularProgressIndicator());
     }
 
-    final tripsAsync = ref.watch(getUpcomingTripsForDriverProvider(user!.uid));
-    
-    print('🚗 DRIVER TRIPS: Fetching trips for driver ${user!.uid}');
+    final tripsAsync = ref.watch(getUpcomingTripsForDriverProvider(_userId!));
 
     return tripsAsync.when(
       data: (trips) {
@@ -216,7 +216,7 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
 
         return RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(getUpcomingTripsForDriverProvider(user!.uid));
+            ref.invalidate(getUpcomingTripsForDriverProvider(_userId!));
           },
           child: ListView.builder(
             itemCount: trips.length,
@@ -303,7 +303,7 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: () {
-                ref.invalidate(getUpcomingTripsForDriverProvider(user!.uid));
+                ref.invalidate(getUpcomingTripsForDriverProvider(_userId!));
               },
               child: const Text('Retry'),
             ),

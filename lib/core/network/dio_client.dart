@@ -6,7 +6,10 @@ import 'api_exceptions.dart';
 
 /// Centralized Dio client with auth, error handling, and logging
 class DioClient {
-  static const String baseUrl = 'http://34.160.91.182';
+  // old link
+  // static const String baseUrl = 'http://34.160.91.182';
+  static const String baseUrl = 'http://35.186.208.67';
+
 
   final Dio _dio;
   final TokenStorage _tokenStorage;
@@ -36,11 +39,8 @@ class DioClient {
           
           // Skip adding auth header for public auth endpoints
           final publicEndpoints = [
-            '/api/auth/login',
-            '/api/auth/register',
-            '/api/auth/password/reset',
-            '/api/auth/phone/send-otp',
-            '/api/auth/phone/verify-otp',
+            '/auth-service/api/auth/login',
+            '/auth-service/api/auth/signup',
           ];
           
           final isPublicEndpoint = publicEndpoints.any((endpoint) => options.path.contains(endpoint));
@@ -212,32 +212,38 @@ class DioClient {
   }
 
   ApiException _handleStatusCode(int statusCode, String message, DioException error) {
+    // Extract the actual message from the server response body if available
+    final responseData = error.response?.data;
+    final serverMessage = (responseData is Map)
+        ? (responseData['message'] as String? ?? message)
+        : message;
+
     switch (statusCode) {
       case 400:
         return ClientException(
-          message: 'Bad request: $message',
+          message: serverMessage,
           statusCode: 400,
           code: 'BAD_REQUEST',
           stackTrace: error.stackTrace,
         );
       case 401:
-        return UnauthorizedException(message: message, stackTrace: error.stackTrace);
+        return UnauthorizedException(message: serverMessage, stackTrace: error.stackTrace);
       case 403:
-        return ForbiddenException(message: message, stackTrace: error.stackTrace);
+        return ForbiddenException(message: serverMessage, stackTrace: error.stackTrace);
       case 404:
-        return NotFoundException(message: message, stackTrace: error.stackTrace);
+        return NotFoundException(message: serverMessage, stackTrace: error.stackTrace);
       case 500:
       case 502:
       case 503:
         return ServerException(
-          message: 'Server error ($statusCode): $message',
+          message: serverMessage,
           statusCode: statusCode,
           code: 'SERVER_ERROR',
           stackTrace: error.stackTrace,
         );
       default:
         return ClientException(
-          message: 'HTTP $statusCode: $message',
+          message: serverMessage,
           statusCode: statusCode,
           stackTrace: error.stackTrace,
         );

@@ -46,7 +46,7 @@ class BookingApiService {
     try {
       print('🔵 BOOKING API: joinTrip called with tripId=${request.tripId}, passengerId=${request.passengerId}');
       final response = await _dioClient.post<ApiResponse<PassengerRideResponse>>(
-        '/trip-service/api/bookings/join',
+        '/trip-service/api/rides/book',
         data: request.toJson(),
         fromJson: (json) {
           print('📦 BOOKING API: joinTrip raw response: $json');
@@ -104,7 +104,7 @@ class BookingApiService {
   ) async {
     try {
       final response = await _dioClient.post<ApiResponse<String>>(
-        '/trip-service/api/bookings/cancel',
+        '/trip-service/api/rides/cancel',
         data: request.toJson(),
         fromJson: (json) {
           if (json is Map<String, dynamic>) {
@@ -162,7 +162,7 @@ class BookingApiService {
       print('🔵 BOOKING API: Fetching bookings for passenger: $passengerId');
       final response = await _dioClient
           .get<ApiResponse<List<PassengerRideResponse>>>(
-        '/trip-service/api/bookings/active/passenger/$passengerId',
+        '/trip-service/api/rides/active/passenger/$passengerId',
         fromJson: (json) {
           print('📦 BOOKING API: Raw response: $json');
           if (json is Map<String, dynamic>) {

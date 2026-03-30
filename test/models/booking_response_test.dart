@@ -54,7 +54,6 @@ void main() {
       expect(driverTripResponse.passengers, isNotNull);
       expect(driverTripResponse.passengers, isA<List>());
       expect(driverTripResponse.passengers?.length, equals(2));
-      expect(driverTripResponse.passengers?.first.passengerId, equals('passenger_1'));
       expect(driverTripResponse.routeDistanceInKm, equals(75.5));
       print('✅ DriverTripResponse uses passengers field correctly');
     });
@@ -99,15 +98,21 @@ void main() {
       final json = {
         'rideId': 'ride_123',
         'tripId': 'trip_456',
-        'passengerId': 'passenger_789',
         'driverId': 'driver_321',
-        'sourceLatitude': 50.8090106,
-        'sourceLongitude': 8.7704695,
-        'destinationLatitude': 50.1106444,
-        'destinationLongitude': 8.6820917,
-        'rideStartTime': '2026-04-04T14:00:00Z',
+        'vehicleNumber': 'ABC123',
+        'pickupLocation': {
+          'latitude': 50.8090106,
+          'longitude': 8.7704695,
+          'placeAddress': 'Marburg, Germany'
+        },
+        'dropoffLocation': {
+          'latitude': 50.1106444,
+          'longitude': 8.6820917,
+          'placeAddress': 'Frankfurt, Germany'
+        },
         'rideStatus': 'CONFIRMED',
-        'seatsBooked': 1,
+        'bookedSeats': 1,
+        'tripStartDateTime': '2026-04-04T14:00:00Z',
       };
 
       // Act
@@ -116,29 +121,14 @@ void main() {
       // Assert
       expect(passengerRide.rideId, equals('ride_123'));
       expect(passengerRide.tripId, equals('trip_456'));
-      expect(passengerRide.passengerId, equals('passenger_789'));
       expect(passengerRide.driverId, equals('driver_321'));
-      expect(passengerRide.sourceLatitude, equals(50.8090106));
-      expect(passengerRide.sourceLongitude, equals(8.7704695));
-      expect(passengerRide.destinationLatitude, equals(50.1106444));
-      expect(passengerRide.destinationLongitude, equals(8.6820917));
+      expect(passengerRide.pickupLocation.latitude, equals(50.8090106));
+      expect(passengerRide.pickupLocation.longitude, equals(8.7704695));
+      expect(passengerRide.dropoffLocation.latitude, equals(50.1106444));
+      expect(passengerRide.dropoffLocation.longitude, equals(8.6820917));
       expect(passengerRide.rideStatus, equals('CONFIRMED'));
-      expect(passengerRide.seatsBooked, equals(1));
+      expect(passengerRide.bookedSeats, equals(1));
       print('✅ PassengerRideResponse has all required fields');
-    });
-
-    test('Passenger data class should have required fields', () {
-      // This test verifies the Passenger model structure
-      final passenger = Passenger(
-        passengerId: 'passenger_1',
-        name: 'John Doe',
-        email: 'john@example.com',
-      );
-
-      expect(passenger.passengerId, isNotNull);
-      expect(passenger.name, isNotNull);
-      expect(passenger.email, isNotNull);
-      print('✅ Passenger model has correct structure');
     });
 
     test('DriverTripResponse booking count should match passengers length',
@@ -165,16 +155,8 @@ void main() {
         availableSeats: 2,
         tripStatus: 'ACTIVE',
         passengers: [
-          Passenger(
-            passengerId: 'p1',
-            name: 'John',
-            email: 'john@example.com',
-          ),
-          Passenger(
-            passengerId: 'p2',
-            name: 'Jane',
-            email: 'jane@example.com',
-          ),
+          {'passengerId': 'p1', 'name': 'John', 'email': 'john@example.com'},
+          {'passengerId': 'p2', 'name': 'Jane', 'email': 'jane@example.com'},
         ],
         routeDistanceInKm: 75.5,
       );

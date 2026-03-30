@@ -7,7 +7,7 @@ void main() async {
   
   // You'll need to replace this with a valid Firebase ID token
   const String testToken = 'YOUR_FIREBASE_ID_TOKEN_HERE';
-  const String baseUrl = 'http://34.160.91.182';
+  const String baseUrl = 'http://35.186.208.67';
   
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,

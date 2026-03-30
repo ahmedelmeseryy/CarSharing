@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'ride_detail_page.dart';
 import 'package:carsharing/widgets/trip_card.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:carsharing/services/places_service.dart';
 import 'package:carsharing/services/trip_search_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -97,9 +96,8 @@ class _RideListPageState extends ConsumerState<RideListPage> {
     });
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
       final tokenStorage = ref.read(secureStorageProvider);
-      final userId = await tokenStorage.getUserId() ?? user?.uid;
+      final userId = await tokenStorage.getUserId();
       if (userId == null || userId.isEmpty) {
         throw Exception('Missing user id for matching-route search');
       }

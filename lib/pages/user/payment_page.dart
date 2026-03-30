@@ -1,10 +1,11 @@
 import 'package:carsharing/pages/user/booking_confirmation_page.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:carsharing/core/storage/secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 import 'package:carsharing/features/trip/data/models/points.dart';
+import 'package:carsharing/features/trip/data/models/trip.dart';
 
 class PaymentPage extends ConsumerWidget {
   final Map<String, dynamic> tripData;
@@ -108,8 +109,9 @@ class PaymentPage extends ConsumerWidget {
   }
 
   Future<void> _processBooking(BuildContext context, WidgetRef ref, String paymentMethod, double totalPrice) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final userId = await TokenStorage().getUserId();
+    if (!context.mounted) return;
+    if (userId == null || userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('You need to be logged in to book a trip.')),
       );
@@ -129,7 +131,7 @@ class PaymentPage extends ConsumerWidget {
 
       final request = JoinTripRequest(
         tripId: tripId,
-        passengerId: user.uid,
+        passengerId: userId,
         driverId: driverId,
         pickupPoint: Points(
           latitude: sourceLat is double ? sourceLat : (sourceLat as num).toDouble(),
@@ -159,13 +161,45 @@ class PaymentPage extends ConsumerWidget {
               ),
             );
             notifier.reset();
+            final double price = (tripData['price'] as num?)?.toDouble() ?? 0.0;
+            final trip = Trip(
+              tripId: tripId,
+              tripStatus: 'available',
+              vehicleNumber: '',
+              driverId: tripData['driverId'] ?? '',
+              sourceAddress: Points(
+                latitude: (tripData['fromLatitude'] ?? tripData['sourceLatitude'] ?? 0.0) is num
+                    ? ((tripData['fromLatitude'] ?? tripData['sourceLatitude']) as num).toDouble()
+                    : 0.0,
+                longitude: (tripData['fromLongitude'] ?? tripData['sourceLongitude'] ?? 0.0) is num
+                    ? ((tripData['fromLongitude'] ?? tripData['sourceLongitude']) as num).toDouble()
+                    : 0.0,
+                placeAddress: tripData['from'] ?? tripData['fromAddress'] ?? '',
+              ),
+              destinationAddress: Points(
+                latitude: (tripData['toLatitude'] ?? tripData['destinationLatitude'] ?? 0.0) is num
+                    ? ((tripData['toLatitude'] ?? tripData['destinationLatitude']) as num).toDouble()
+                    : 0.0,
+                longitude: (tripData['toLongitude'] ?? tripData['destinationLongitude'] ?? 0.0) is num
+                    ? ((tripData['toLongitude'] ?? tripData['destinationLongitude']) as num).toDouble()
+                    : 0.0,
+                placeAddress: tripData['to'] ?? tripData['toAddress'] ?? '',
+              ),
+              totalSeats: selectedSeats,
+              bookedSeats: 0,
+              tripStartDateTime: tripData['date'] != null
+                  ? DateTime.tryParse(tripData['date'].toString()) ?? DateTime.now()
+                  : DateTime.now(),
+              pricePerKm: price,
+              routeDistance: 1000.0,
+            );
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (context) => BookingConfirmationPage(
-                  tripData: tripData,
-                  bookingId: booking.rideId ?? '',
+                  trip: trip,
                   selectedSeats: selectedSeats,
-                  totalPrice: totalPrice,
+                  paymentMethod: paymentMethod,
+                  booking: booking,
                 ),
               ),
               (Route<dynamic> route) => route.isFirst,

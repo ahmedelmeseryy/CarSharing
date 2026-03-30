@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:carsharing/core/network/dio_client.dart';
 import 'package:carsharing/features/trip/data/services/trip_api_service.dart';
@@ -5,7 +6,6 @@ import 'package:carsharing/features/booking/data/services/booking_api_service.da
 import 'package:carsharing/features/trip/data/models/offer_ride_request.dart';
 import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/features/trip/data/models/points.dart';
-import 'package:dio/dio.dart';
 
 void main() {
   group('API Integration Tests', () {
@@ -13,13 +13,8 @@ void main() {
     late TripApiService tripApiService;
     late BookingApiService bookingApiService;
 
-    // Test data
-    const testBaseUrl = 'http://34.160.91.182';
-    const testToken = 'test_token'; // This would come from Firebase in real scenario
-
     setUpAll(() {
-      // Initialize DioClient with test token
-      dioClient = DioClient(baseUrl: testBaseUrl, token: testToken);
+      dioClient = DioClient();
       tripApiService = TripApiService(dioClient);
       bookingApiService = BookingApiService(dioClient);
     });
@@ -55,7 +50,7 @@ void main() {
         expect(response.data, isNotNull);
         expect(response.data, isA<List<Trip>>());
         print('✅ Trip search returned ${response.data?.length ?? 0} results');
-        
+
         // Verify response structure if trips exist
         if (response.data!.isNotEmpty) {
           final trip = response.data!.first;
@@ -209,8 +204,8 @@ void main() {
             longitude: 8.6820917,
             placeAddress: 'Frankfurt, Germany',
           ),
-          tripStartDateTime: '2026-04-04T14:00:00Z',
-          offeredSeat: 3,
+          tripStartDateTime: DateTime.parse('2026-04-04T14:00:00Z'),
+          totalSeats: 3,
         );
 
         // Act
@@ -221,7 +216,7 @@ void main() {
         expect(response.data, isNotNull);
         expect(response.data?.tripId, isNotNull);
         expect(response.data?.vehicleNumber, equals('TEST123'));
-        expect(response.data?.tripStatus, isNotNull);
+        expect(response.data?.tripCreated, isTrue);
         print('✅ Trip created successfully with ID: ${response.data?.tripId}');
       });
 
@@ -240,8 +235,8 @@ void main() {
             longitude: 8.6820917,
             placeAddress: 'Frankfurt, Germany',
           ),
-          tripStartDateTime: '2026-05-15T10:00:00Z',
-          offeredSeat: 4,
+          tripStartDateTime: DateTime.parse('2026-05-15T10:00:00Z'),
+          totalSeats: 4,
         );
 
         // Act
@@ -257,8 +252,8 @@ void main() {
         expect(response.data?.tripStartDateTime, isNotNull);
         expect(response.data?.tripTimezone, isNotNull);
         expect(response.data?.routeGeometry, isNotNull);
-        expect(response.data?.routeDistance, isNotNull);
-        expect(response.data?.routeDuration, isNotNull);
+        expect(response.data?.routeDistanceInKm, isNotNull);
+        expect(response.data?.routeDurationInMinutes, isNotNull);
         print('✅ Trip response structure verified with route geometry');
       });
     });
@@ -310,7 +305,7 @@ void main() {
         const passengerId = 'test_passenger_id';
 
         // Act
-        final response = await bookingApiService.getPassengerActiveBookings(passengerId);
+        final response = await bookingApiService.getUpcomingBookingsForPassenger(passengerId);
 
         // Assert
         expect(response, isNotNull);

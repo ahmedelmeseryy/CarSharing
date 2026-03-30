@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/pages/user/payment_method_page.dart';
@@ -358,79 +357,32 @@ class _TripBookingDetailPageState extends ConsumerState<TripBookingDetailPage> {
   }
 
   Widget _buildDriverInfo(String driverId) {
-    return FutureBuilder<DocumentSnapshot>(
-      future:
-          FirebaseFirestore.instance.collection('users').doc(driverId).get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(8.0),
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-
-        String driverName = 'Unknown Driver';
-        String? carModel;
-        String? phone;
-
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final userData = snapshot.data!.data() as Map<String, dynamic>?;
-          driverName = userData?['name'] as String? ?? 'Unknown Driver';
-          carModel = userData?['carModel'] as String?;
-          phone = userData?['phone'] as String?;
-        }
-
-        return Column(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.blue.shade100,
-                  child: const Icon(Icons.person, size: 32, color: Colors.blue),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        driverName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (carModel != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          carModel,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                      if (phone != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          phone,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 30,
+          backgroundColor: Colors.blue.shade100,
+          child: const Icon(Icons.person, size: 32, color: Colors.blue),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Driver',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'ID: $driverId',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

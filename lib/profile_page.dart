@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'core/storage/secure_storage.dart';
+import 'features/auth/data/services/auth_api_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -27,39 +27,25 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadUserData() async {
     setState(() => _isLoading = true);
-    final user = FirebaseAuth.instance.currentUser;
-    if (user != null) {
-      final doc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        _nameController.text = data['name'] ?? '';
-        _surnameController.text = data['surname'] ?? '';
-        _ageController.text = data['age'] ?? '';
-        _phoneController.text = data['phone'] ?? '';
-        _email = data['email'] ?? '';
-      }
-    }
+    final storage = TokenStorage();
+    _nameController.text = await storage.getUserName() ?? '';
+    _surnameController.text = await storage.getUserSurname() ?? '';
+    _ageController.text = await storage.getUserAge() ?? '';
+    _phoneController.text = await storage.getUserPhone() ?? '';
+    _email = await storage.getUserEmail() ?? '';
     setState(() => _isLoading = false);
   }
 
   Future<void> _updateUserProfile() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.uid)
-            .update({
-          'name': _nameController.text.trim(),
-          'surname': _surnameController.text.trim(),
-          'age': _ageController.text.trim(),
-          'phone': _phoneController.text.trim(),
-        });
-      }
+      await TokenStorage().saveUserProfile(
+        name: _nameController.text.trim(),
+        surname: _surnameController.text.trim(),
+        age: _ageController.text.trim(),
+        phone: _phoneController.text.trim(),
+      );
+      if (!mounted) return;
       setState(() {
         _isEditing = false;
         _isLoading = false;
@@ -184,7 +170,7 @@ class _ProfilePageState extends State<ProfilePage> {
         labelText: label,
         prefixIcon: Icon(icon),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-         fillColor: _isEditing ? Colors.white : Colors.grey[200],
+        fillColor: _isEditing ? Colors.white : Colors.grey[200],
       ),
       keyboardType: keyboardType,
       validator: (value) =>
@@ -201,10 +187,11 @@ class _ProfilePageState extends State<ProfilePage> {
         foregroundColor: Colors.white,
       ),
       onPressed: () async {
-        await FirebaseAuth.instance.signOut();
+        await AuthApiService().logout();
+        if (!mounted) return;
         Navigator.of(context)
             .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
       },
     );
   }
-} 
+}

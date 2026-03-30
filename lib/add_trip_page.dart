@@ -2,7 +2,7 @@ import 'package:carsharing/widgets/address_autocomplete_field.dart';
 import 'package:carsharing/features/trip/data/models/offer_ride_request.dart';
 import 'package:carsharing/features/trip/data/models/points.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:carsharing/core/storage/secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -288,8 +288,9 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final userId = await TokenStorage().getUserId();
+    if (userId == null || userId.isEmpty) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('You must be logged in to add a trip'),
@@ -308,7 +309,7 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
     );
 
     final request = OfferRideRequest(
-      driverId: user.uid,
+      driverId: userId,
       vehicleNumber: _vehicleNumberController.text.trim(),
       sourceAddress: Points(
         latitude: _fromLatitude!,

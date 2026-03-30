@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/pages/user/trip_booking_detail_page.dart';
@@ -199,50 +198,22 @@ class TripSearchResultsPage extends ConsumerWidget {
   }
 
   Widget _buildDriverInfo(String driverId) {
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(driverId).get(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.blue.shade100,
-                child: const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Text('Loading driver info...'),
-            ],
-          );
-        }
-
-        String driverName = 'Unknown Driver';
-        if (snapshot.hasData && snapshot.data!.exists) {
-          final userData = snapshot.data!.data() as Map<String, dynamic>?;
-          driverName = userData?['name'] as String? ?? 'Unknown Driver';
-        }
-
-        return Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.blue.shade100,
-              child: const Icon(Icons.person, color: Colors.blue),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Driver: $driverName',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
-        );
-      },
+    return Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: Colors.blue.shade100,
+          child: const Icon(Icons.person, color: Colors.blue),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Driver ID: $driverId',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
