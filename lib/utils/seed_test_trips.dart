@@ -85,7 +85,6 @@ class SeedTestTrips {
     final departureDate = DateTime(now.year, now.month, now.day + daysFromNow, hour, 0);
     return OfferRideRequest(
       driverId: driverId,
-      vehicleNumber: 'TEST-001',
       sourceAddress: Points(
         latitude: fromLat,
         longitude: fromLon,

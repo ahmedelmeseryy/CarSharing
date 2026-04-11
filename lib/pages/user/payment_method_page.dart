@@ -281,7 +281,7 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
       final request = JoinTripRequest(
         tripId: widget.trip.tripId!,
         passengerId: userId,
-        driverId: widget.trip.driverId,
+        driverId: widget.trip.driverId ?? '',
         pickupPoint: widget.trip.sourceAddress,
         destinationPoint: widget.trip.destinationAddress,
         rideStartTime: widget.trip.tripStartDateTime.toUtc().toIso8601String(),

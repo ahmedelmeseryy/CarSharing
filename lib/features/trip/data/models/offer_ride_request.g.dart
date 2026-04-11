@@ -9,7 +9,6 @@ part of 'offer_ride_request.dart';
 OfferRideRequest _$OfferRideRequestFromJson(Map<String, dynamic> json) =>
     OfferRideRequest(
       driverId: json['driverId'] as String,
-      vehicleNumber: json['vehicleNumber'] as String,
       sourceAddress: const PointsConverter().fromJson(
         json['sourceAddress'] as Map<String, dynamic>,
       ),
@@ -20,12 +19,12 @@ OfferRideRequest _$OfferRideRequestFromJson(Map<String, dynamic> json) =>
         json['tripStartDateTime'] as String,
       ),
       totalSeats: (json['totalSeats'] as num).toInt(),
+      pricePerSeat: (json['pricePerSeat'] as num?)?.toDouble(),
     );
 
 Map<String, dynamic> _$OfferRideRequestToJson(OfferRideRequest instance) =>
     <String, dynamic>{
       'driverId': instance.driverId,
-      'vehicleNumber': instance.vehicleNumber,
       'sourceAddress': const PointsConverter().toJson(instance.sourceAddress),
       'destinationAddress': const PointsConverter().toJson(
         instance.destinationAddress,
@@ -34,4 +33,5 @@ Map<String, dynamic> _$OfferRideRequestToJson(OfferRideRequest instance) =>
         instance.tripStartDateTime,
       ),
       'totalSeats': instance.totalSeats,
+      if (instance.pricePerSeat case final value?) 'pricePerSeat': value,
     };

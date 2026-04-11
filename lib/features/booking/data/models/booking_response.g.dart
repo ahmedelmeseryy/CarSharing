@@ -11,21 +11,23 @@ DriverTripResponse _$DriverTripResponseFromJson(
 ) => DriverTripResponse(
   tripId: json['tripId'] as String?,
   driverId: json['driverId'] as String?,
-  vehicleNumber: json['vehicleNumber'] as String,
-  tripStatus: json['tripStatus'] as String,
-  sourceAddress: Points.fromJson(json['sourceAddress'] as Map<String, dynamic>),
-  destinationAddress: Points.fromJson(
-    json['destinationAddress'] as Map<String, dynamic>,
-  ),
-  tripStartDateTime: json['tripStartDateTime'] as String,
+  vehicleNumber: json['vehicleNumber'] as String?,
+  tripStatus: json['tripStatus'] as String?,
+  sourceAddress: json['sourceAddress'] == null
+      ? null
+      : Points.fromJson(json['sourceAddress'] as Map<String, dynamic>),
+  destinationAddress: json['destinationAddress'] == null
+      ? null
+      : Points.fromJson(json['destinationAddress'] as Map<String, dynamic>),
+  tripStartDateTime: json['tripStartDateTime'] as String?,
   tripTimezone: json['tripTimezone'] as String?,
-  totalSeats: (json['totalSeats'] as num).toInt(),
-  availableSeats: (json['availableSeats'] as num).toInt(),
+  totalSeats: (json['totalSeats'] as num?)?.toInt() ?? 0,
+  availableSeats: (json['availableSeats'] as num?)?.toInt() ?? 0,
   bookedSeats: (json['bookedSeats'] as num?)?.toInt() ?? 0,
   passengers: json['passengers'] as List<dynamic>?,
   routeDistanceInKm: (json['routeDistanceInKm'] as num?)?.toDouble(),
   routeDurationInMinutes: (json['routeDurationInMinutes'] as num?)?.toDouble(),
-  pricePerKm: (json['pricePerKm'] as num?)?.toDouble(),
+  pricePerSeat: (json['pricePerSeat'] as num?)?.toDouble(),
 );
 
 Map<String, dynamic> _$DriverTripResponseToJson(DriverTripResponse instance) =>
@@ -44,7 +46,7 @@ Map<String, dynamic> _$DriverTripResponseToJson(DriverTripResponse instance) =>
       'passengers': instance.passengers,
       'routeDistanceInKm': instance.routeDistanceInKm,
       'routeDurationInMinutes': instance.routeDurationInMinutes,
-      'pricePerKm': instance.pricePerKm,
+      'pricePerSeat': instance.pricePerSeat,
     };
 
 PassengerRideResponse _$PassengerRideResponseFromJson(

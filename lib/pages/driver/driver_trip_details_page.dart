@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
+import 'package:carsharing/core/network/dio_client.dart';
+import 'package:carsharing/features/trip/data/services/trip_api_service.dart';
 
 class DriverTripDetailsPage extends StatefulWidget {
   final DriverTripResponse trip;
@@ -15,6 +17,38 @@ class DriverTripDetailsPage extends StatefulWidget {
 }
 
 class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
+  List<dynamic> _passengers = [];
+  bool _loadingPassengers = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPassengers();
+  }
+
+  Future<void> _fetchPassengers() async {
+    final tripId = widget.trip.tripId;
+    if (tripId == null || tripId.isEmpty) {
+      setState(() => _loadingPassengers = false);
+      return;
+    }
+    try {
+      final service = TripApiService(DioClient());
+      final data = await service.getTripById(tripId);
+      if (data != null) {
+        final raw = data['passengers'];
+        setState(() {
+          _passengers = raw is List ? raw : [];
+          _loadingPassengers = false;
+        });
+      } else {
+        setState(() => _loadingPassengers = false);
+      }
+    } catch (_) {
+      setState(() => _loadingPassengers = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,24 +71,30 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
 
   Widget _buildTripInfoCard() {
     final trip = widget.trip;
-    final from = trip.sourceAddress.placeAddress ?? 'N/A';
-    final to = trip.destinationAddress.placeAddress ?? 'N/A';
-    
+    final from = trip.sourceAddress?.placeAddress ?? 'N/A';
+    final to = trip.destinationAddress?.placeAddress ?? 'N/A';
+
     String formattedDate = 'N/A';
     String formattedTime = 'N/A';
-    final parsedDate = DateTime.tryParse(trip.tripStartDateTime);
+    final parsedDate = trip.tripStartDateTime != null
+        ? DateTime.tryParse(trip.tripStartDateTime!)
+        : null;
     if (parsedDate != null) {
       formattedDate = DateFormat.yMMMMEEEEd().format(parsedDate.toLocal());
       formattedTime = DateFormat.jm().format(parsedDate.toLocal());
     }
 
-    final distance = trip.routeDistanceInKm != null 
-      ? '${trip.routeDistanceInKm!.toStringAsFixed(1)} km' 
-      : 'N/A';
-    
+    final distance = trip.routeDistanceInKm != null
+        ? '${trip.routeDistanceInKm!.toStringAsFixed(1)} km'
+        : 'N/A';
+
     final duration = trip.routeDurationInMinutes != null
-      ? '${trip.routeDurationInMinutes!.toStringAsFixed(0)} min'
-      : 'N/A';
+        ? '${trip.routeDurationInMinutes!.toStringAsFixed(0)} min'
+        : 'N/A';
+
+    final price = trip.pricePerSeat != null
+        ? '€${trip.pricePerSeat!.toStringAsFixed(2)} / seat'
+        : 'N/A';
 
     return Card(
       elevation: 4,
@@ -66,17 +106,19 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
             Text(
               '$from → $to',
               style: Theme.of(context).textTheme.headlineSmall,
+              softWrap: true,
             ),
             const SizedBox(height: 16),
             _buildInfoRow(Icons.calendar_today, 'Date', formattedDate),
             _buildInfoRow(Icons.access_time, 'Time', formattedTime),
-            _buildInfoRow(Icons.event_seat, 'Offered Seats', '${trip.totalSeats}'),
+            _buildInfoRow(Icons.euro, 'Price', price),
+            _buildInfoRow(Icons.event_seat, 'Total Seats', '${trip.totalSeats}'),
             _buildInfoRow(Icons.people, 'Booked Seats', '${trip.bookedSeats}'),
             _buildInfoRow(Icons.event_available, 'Available Seats', '${trip.availableSeats}'),
             _buildInfoRow(Icons.route, 'Distance', distance),
             _buildInfoRow(Icons.timer, 'Duration', duration),
-            _buildInfoRow(Icons.directions_car, 'Vehicle', trip.vehicleNumber),
-            _buildInfoRow(Icons.info, 'Status', trip.tripStatus),
+            _buildInfoRow(Icons.directions_car, 'Vehicle', trip.vehicleNumber ?? 'N/A'),
+            _buildInfoRow(Icons.info, 'Status', trip.tripStatus ?? 'N/A'),
           ],
         ),
       ),
@@ -84,9 +126,6 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
   }
 
   Widget _buildBookingsSection() {
-    final trip = widget.trip;
-    final passengers = trip.passengers ?? [];
-    
     return Card(
       elevation: 4,
       child: Padding(
@@ -95,36 +134,51 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Passengers',
-                  style: Theme.of(context).textTheme.titleLarge,
+                Expanded(
+                  child: Text(
+                    'Passengers',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.blue,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    '${passengers.length} ${passengers.length == 1 ? 'booking' : 'bookings'}',
+                    '${widget.trip.bookedSeats} booked',
                     style: const TextStyle(
                       color: Colors.white,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.refresh),
+                  onPressed: () {
+                    setState(() => _loadingPassengers = true);
+                    _fetchPassengers();
+                  },
+                  tooltip: 'Refresh',
+                ),
               ],
             ),
             const SizedBox(height: 16),
-            if (passengers.isEmpty)
-              const Center(
+            if (_loadingPassengers)
+              const Center(child: CircularProgressIndicator())
+            else if (_passengers.isEmpty)
+              Center(
                 child: Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16.0),
                   child: Text(
-                    'No passengers have booked this trip yet.',
-                    style: TextStyle(color: Colors.grey),
+                    widget.trip.bookedSeats > 0
+                        ? 'Passengers have booked but details are not available yet.'
+                        : 'No passengers have booked this trip yet.',
+                    style: const TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center,
                   ),
                 ),
               )
@@ -132,10 +186,10 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: passengers.length,
+                itemCount: _passengers.length,
                 itemBuilder: (context, index) {
-                  final passenger = passengers[index];
-                  final passengerData = _normalizePassenger(passenger);
+                  final passenger = _passengers[index];
+                  final data = _normalizePassenger(passenger);
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -150,8 +204,8 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
                           ),
                         ),
                       ),
-                      title: Text(passengerData.name),
-                      subtitle: _buildPassengerSubtitle(passengerData),
+                      title: Text(data.name),
+                      subtitle: _buildPassengerSubtitle(data),
                       trailing: const Icon(Icons.check_circle, color: Colors.green),
                     ),
                   );
@@ -172,11 +226,11 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
           ?.toString();
       final email = passenger['email']?.toString();
       final phone = (passenger['phone'] ?? passenger['phoneNumber'])?.toString();
-      final seats = (passenger['bookedSeats'] ?? passenger['seats'])?.toString();
+      final seats = (passenger['bookedSeats'] ?? passenger['seats'] ?? passenger['requestedSeats'])?.toString();
       final id = (passenger['passengerId'] ?? passenger['userId'] ?? passenger['id'])?.toString();
 
       return _PassengerDisplayData(
-        name: name?.isNotEmpty == true ? name! : 'Passenger',
+        name: name?.isNotEmpty == true ? name! : (id ?? 'Passenger'),
         email: email,
         phone: phone,
         seats: seats,
@@ -192,23 +246,11 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
 
   Widget? _buildPassengerSubtitle(_PassengerDisplayData data) {
     final details = <String>[];
-    if (data.email != null && data.email!.isNotEmpty) {
-      details.add(data.email!);
-    }
-    if (data.phone != null && data.phone!.isNotEmpty) {
-      details.add(data.phone!);
-    }
-    if (data.seats != null && data.seats!.isNotEmpty) {
-      details.add('Seats: ${data.seats}');
-    }
-    if (details.isEmpty && data.id != null && data.id!.isNotEmpty) {
-      details.add('ID: ${data.id}');
-    }
-
-    if (details.isEmpty) {
-      return null;
-    }
-
+    if (data.email != null && data.email!.isNotEmpty) details.add(data.email!);
+    if (data.phone != null && data.phone!.isNotEmpty) details.add(data.phone!);
+    if (data.seats != null && data.seats!.isNotEmpty) details.add('Seats: ${data.seats}');
+    if (details.isEmpty && data.id != null && data.id!.isNotEmpty) details.add('ID: ${data.id}');
+    if (details.isEmpty) return null;
     return Text(details.join(' • '));
   }
 
@@ -225,7 +267,7 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
       ),
     );
   }
-} 
+}
 
 class _PassengerDisplayData {
   final String name;

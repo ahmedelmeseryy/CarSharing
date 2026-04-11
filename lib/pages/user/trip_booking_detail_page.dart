@@ -175,7 +175,7 @@ class _TripBookingDetailPageState extends ConsumerState<TripBookingDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildDriverInfo(widget.trip.driverId),
+                    _buildDriverInfo(widget.trip.driverId ?? ''),
                   ],
                 ),
               ),

@@ -150,7 +150,7 @@ class TripSearchResultsPage extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 12),
-            _buildDriverInfo(trip.driverId),
+            _buildDriverInfo(trip.driverId ?? ''),
             const SizedBox(height: 12),
             Row(
               children: [

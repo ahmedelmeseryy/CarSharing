@@ -10,12 +10,16 @@ OfferRideResponse _$OfferRideResponseFromJson(
   Map<String, dynamic> json,
 ) => OfferRideResponse(
   tripId: json['tripId'] as String?,
-  vehicleNumber: json['vehicleNumber'] as String,
-  sourceAddress: Points.fromJson(json['sourceAddress'] as Map<String, dynamic>),
-  destinationAddress: Points.fromJson(
-    json['destinationAddress'] as Map<String, dynamic>,
-  ),
-  tripStartDateTime: DateTime.parse(json['tripStartDateTime'] as String),
+  vehicleNumber: json['vehicleNumber'] as String?,
+  sourceAddress: json['sourceAddress'] == null
+      ? null
+      : Points.fromJson(json['sourceAddress'] as Map<String, dynamic>),
+  destinationAddress: json['destinationAddress'] == null
+      ? null
+      : Points.fromJson(json['destinationAddress'] as Map<String, dynamic>),
+  tripStartDateTime: json['tripStartDateTime'] == null
+      ? null
+      : DateTime.parse(json['tripStartDateTime'] as String),
   tripTimezone: json['tripTimezone'] as String?,
   offeredSeat: (json['offeredSeat'] as num?)?.toInt() ?? 0,
   availableSeats: (json['availableSeats'] as num?)?.toInt() ?? 0,
@@ -24,7 +28,7 @@ OfferRideResponse _$OfferRideResponseFromJson(
   routeDistanceInKm: (json['routeDistanceInKm'] as num?)?.toDouble(),
   routeDurationInSeconds: (json['routeDurationInSeconds'] as num?)?.toDouble(),
   routeDurationInMinutes: (json['routeDurationInMinutes'] as num?)?.toDouble(),
-  tripCreated: json['tripCreated'] as bool,
+  tripCreated: json['tripCreated'] as bool? ?? false,
   errorMessage: json['errorMessage'] as String?,
 );
 
@@ -34,7 +38,7 @@ Map<String, dynamic> _$OfferRideResponseToJson(OfferRideResponse instance) =>
       'vehicleNumber': instance.vehicleNumber,
       'sourceAddress': instance.sourceAddress,
       'destinationAddress': instance.destinationAddress,
-      'tripStartDateTime': instance.tripStartDateTime.toIso8601String(),
+      'tripStartDateTime': instance.tripStartDateTime?.toIso8601String(),
       'tripTimezone': instance.tripTimezone,
       'offeredSeat': instance.offeredSeat,
       'availableSeats': instance.availableSeats,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'pages/driver/driver_trip_details_page.dart';
-import 'pages/admin/seed_trips_page.dart';
 import 'pages/driver/tabs/driver_welcome_tab.dart';
 import 'package:carsharing/main.dart'; // For ProfilePage
 import 'package:intl/intl.dart';
@@ -42,15 +41,11 @@ class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
         actions: _selectedIndex == 1
             ? [
                 IconButton(
-                  icon: const Icon(Icons.science),
-                  tooltip: 'Seed Test Trips',
+                  icon: const Icon(Icons.refresh),
+                  tooltip: 'Refresh',
                   onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const SeedTripsPage(),
-                      ),
-                    );
+                    final state = context.findAncestorStateOfType<_DriverTripsPageState>();
+                    state?._refresh();
                   },
                 ),
               ]
@@ -108,6 +103,12 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
   Future<void> _loadUserId() async {
     final id = await TokenStorage().getUserId();
     if (mounted) setState(() => _userId = id);
+  }
+
+  void _refresh() {
+    if (_userId != null) {
+      ref.invalidate(getUpcomingTripsForDriverProvider(_userId!));
+    }
   }
 
   @override
@@ -225,17 +226,16 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
               
               String formattedDate = 'N/A';
               try {
-                if (trip.tripStartDateTime.isNotEmpty) {
-                  // Parse the ISO 8601 date string
-                  final dateTime = DateTime.parse(trip.tripStartDateTime);
+                if (trip.tripStartDateTime != null && trip.tripStartDateTime!.isNotEmpty) {
+                  final dateTime = DateTime.parse(trip.tripStartDateTime!);
                   formattedDate = DateFormat.yMd().format(dateTime);
                 }
               } catch (e) {
-                formattedDate = trip.tripStartDateTime;
+                formattedDate = trip.tripStartDateTime ?? 'N/A';
               }
-              
-              final from = trip.sourceAddress.placeAddress ?? 'N/A';
-              final to = trip.destinationAddress.placeAddress ?? 'N/A';
+
+              final from = trip.sourceAddress?.placeAddress ?? 'N/A';
+              final to = trip.destinationAddress?.placeAddress ?? 'N/A';
               final seats = trip.totalSeats;
               final bookedSeats = trip.bookedSeats;
               final bookingCount = trip.passengers?.length ?? 0;

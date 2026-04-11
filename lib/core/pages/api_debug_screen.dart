@@ -128,7 +128,6 @@ class _ApiDebugScreenState extends ConsumerState<ApiDebugScreen> {
   Future<void> _testOfferTrip() async {
     final request = OfferRideRequest(
       driverId: 'driver-123',
-      vehicleNumber: 'ABC-1234',
       sourceAddress: const Points(
         latitude: 52.52,
         longitude: 13.405,

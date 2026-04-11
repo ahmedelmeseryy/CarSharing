@@ -190,7 +190,7 @@ class PaymentPage extends ConsumerWidget {
               tripStartDateTime: tripData['date'] != null
                   ? DateTime.tryParse(tripData['date'].toString()) ?? DateTime.now()
                   : DateTime.now(),
-              pricePerKm: price,
+              pricePerSeat: price,
               routeDistance: 1000.0,
             );
             Navigator.of(context).pushAndRemoveUntil(

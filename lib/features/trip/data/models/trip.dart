@@ -3,63 +3,96 @@ import 'points.dart';
 
 part 'trip.g.dart';
 
-/// Represents a Trip when searching for available trips
-/// Maps from Swagger: Trip (returned by search endpoints)
+// ── Custom fromJson helpers ────────────────────────────────────────────────
+
+Points _parsePoints(dynamic v) {
+  if (v == null) return const Points(latitude: 0, longitude: 0);
+  if (v is Map<String, dynamic>) return Points.fromJson(v);
+  return const Points(latitude: 0, longitude: 0);
+}
+
+Map<String, dynamic> _pointsToJson(Points p) => p.toJson();
+
+DateTime _parseDateTime(dynamic v) {
+  if (v == null) return DateTime.now();
+  try {
+    return DateTime.parse(v as String);
+  } catch (_) {
+    return DateTime.now();
+  }
+}
+
+String _dateTimeToJson(DateTime d) => d.toIso8601String();
+
+// ── Model ──────────────────────────────────────────────────────────────────
+
+/// Represents a Trip when searching for available trips.
+/// Server returns: tripId, driverId, status, departureTime,
+///   sourceLocation, destinationLocation, availableSeats, pricePerSeat
 @JsonSerializable()
 class Trip {
   final String? tripId;
-  final String tripStatus;
-  final String vehicleNumber;
-  final String driverId;
+
+  final String? tripStatus;
+
+  final String? vehicleNumber;
+  final String? driverId;
+
+  @JsonKey(name: 'sourceAddress', fromJson: _parsePoints, toJson: _pointsToJson)
   final Points sourceAddress;
+
+  @JsonKey(name: 'destinationAddress', fromJson: _parsePoints, toJson: _pointsToJson)
   final Points destinationAddress;
-  final Map<String, dynamic>? sourceLocation;
-  final Map<String, dynamic>? destinationLocation;
-  
+
+  @JsonKey(defaultValue: 0)
   final int totalSeats;
+
+  @JsonKey(defaultValue: 0)
   final int bookedSeats;
-  
-  @JsonKey(name: 'tripStartDateTimeUTC')
+
+  @JsonKey(defaultValue: 0)
+  final int availableSeats;
+
+  @JsonKey(name: 'tripStartDateTimeUTC', fromJson: _parseDateTime, toJson: _dateTimeToJson)
   final DateTime tripStartDateTime;
-  
+
   @JsonKey(name: 'tripTimezone')
   final String? tripTimezone;
-  
+
   @JsonKey(name: 'routeGeometry')
   final Map<String, dynamic>? routeGeometry;
-  
+
   @JsonKey(name: 'routeDistance')
   final double? routeDistance;
-  
+
   @JsonKey(name: 'routeDuration')
   final double? routeDuration;
-  
-  @JsonKey(name: 'pricePerKm')
-  final double? pricePerKm;
-  
+
+  @JsonKey(name: 'pricePerSeat')
+  final double? pricePerSeat;
+
   @JsonKey(name: 'joinedRidersId')
   final List<dynamic>? joinedRidersId;
-  
+
   @JsonKey(name: 'createdDate')
   final DateTime? createdDate;
 
   Trip({
     this.tripId,
-    required this.tripStatus,
-    required this.vehicleNumber,
-    required this.driverId,
+    this.tripStatus,
+    this.vehicleNumber,
+    this.driverId,
     required this.sourceAddress,
     required this.destinationAddress,
-    this.sourceLocation,
-    this.destinationLocation,
-    required this.totalSeats,
+    this.totalSeats = 0,
     this.bookedSeats = 0,
+    this.availableSeats = 0,
     required this.tripStartDateTime,
     this.tripTimezone,
     this.routeGeometry,
     this.routeDistance,
     this.routeDuration,
-    this.pricePerKm,
+    this.pricePerSeat,
     this.joinedRidersId,
     this.createdDate,
   });
@@ -67,15 +100,10 @@ class Trip {
   factory Trip.fromJson(Map<String, dynamic> json) => _$TripFromJson(json);
   Map<String, dynamic> toJson() => _$TripToJson(this);
 
-  /// Helper: available seats = total - booked
-  int get availableSeats => totalSeats - bookedSeats;
-
-  /// Helper: estimated fare
-  double get estimatedFare {
-    if (pricePerKm == null || routeDistance == null) return 0;
-    return pricePerKm! * (routeDistance! / 1000);
-  }
+  /// Flat price per seat (€). Returns 0 if not set.
+  double get estimatedFare => pricePerSeat ?? 0;
 
   @override
-  String toString() => 'Trip($tripId: ${sourceAddress.placeAddress} → ${destinationAddress.placeAddress})';
+  String toString() =>
+      'Trip($tripId: ${sourceAddress.placeAddress} → ${destinationAddress.placeAddress})';
 }

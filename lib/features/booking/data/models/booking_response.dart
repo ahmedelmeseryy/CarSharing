@@ -14,27 +14,23 @@ class DriverTripResponse {
   final String? driverId;
   
   @JsonKey(name: 'vehicleNumber')
-  final String vehicleNumber;
-  
-  @JsonKey(name: 'tripStatus')
-  final String tripStatus;
-  
-  @JsonKey(name: 'sourceAddress')
-  final Points sourceAddress;
-  
-  @JsonKey(name: 'destinationAddress')
-  final Points destinationAddress;
-  
-  @JsonKey(name: 'tripStartDateTime')
-  final String tripStartDateTime;
-  
+  final String? vehicleNumber;
+
+  final String? tripStatus;
+
+  final Points? sourceAddress;
+
+  final Points? destinationAddress;
+
+  final String? tripStartDateTime;
+
   @JsonKey(name: 'tripTimezone')
   final String? tripTimezone;
-  
-  @JsonKey(name: 'totalSeats')
+
+  @JsonKey(name: 'totalSeats', defaultValue: 0)
   final int totalSeats;
-  
-  @JsonKey(name: 'availableSeats')
+
+  @JsonKey(name: 'availableSeats', defaultValue: 0)
   final int availableSeats;
   
   @JsonKey(name: 'bookedSeats', defaultValue: 0)
@@ -49,17 +45,17 @@ class DriverTripResponse {
   @JsonKey(name: 'routeDurationInMinutes')
   final double? routeDurationInMinutes;
   
-  @JsonKey(name: 'pricePerKm')
-  final double? pricePerKm;
+  @JsonKey(name: 'pricePerSeat')
+  final double? pricePerSeat;
 
   DriverTripResponse({
     this.tripId,
     this.driverId,
-    required this.vehicleNumber,
-    required this.tripStatus,
-    required this.sourceAddress,
-    required this.destinationAddress,
-    required this.tripStartDateTime,
+    this.vehicleNumber,
+    this.tripStatus,
+    this.sourceAddress,
+    this.destinationAddress,
+    this.tripStartDateTime,
     this.tripTimezone,
     required this.totalSeats,
     required this.availableSeats,
@@ -67,25 +63,19 @@ class DriverTripResponse {
     this.passengers,
     this.routeDistanceInKm,
     this.routeDurationInMinutes,
-    this.pricePerKm,
+    this.pricePerSeat,
   });
 
-  factory DriverTripResponse.fromJson(Map<String, dynamic> json) => 
+  factory DriverTripResponse.fromJson(Map<String, dynamic> json) =>
       _$DriverTripResponseFromJson(json);
-  
+
   Map<String, dynamic> toJson() => _$DriverTripResponseToJson(this);
 
   /// Estimated total earnings if all seats filled
-  double get estimatedEarnings {
-    if (routeDistanceInKm == null || pricePerKm == null) return 0.0;
-    return routeDistanceInKm! * pricePerKm! * totalSeats;
-  }
+  double get estimatedEarnings => (pricePerSeat ?? 0) * totalSeats;
 
   /// Estimated earnings from currently booked seats
-  double get currentEarnings {
-    if (routeDistanceInKm == null || pricePerKm == null) return 0.0;
-    return routeDistanceInKm! * pricePerKm! * bookedSeats;
-  }
+  double get currentEarnings => (pricePerSeat ?? 0) * bookedSeats;
 }
 
 /// Response from GET /api/bookings/upcoming/passenger/{passengerId}

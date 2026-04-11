@@ -127,13 +127,14 @@ class TripApiService {
     String driverId,
   ) async {
     try {
-      print('🚗 DEBUG: Fetching trips for driver: $driverId');
-      
+      print('🚗 DRIVER_TRIPS: driverId="$driverId" (empty=${driverId.isEmpty})');
+      print('🚗 DRIVER_TRIPS: calling GET /trip-service/api/trips/active/driver/$driverId');
+
       final response = await _dioClient.get<ApiResponse<List<DriverTripResponse>>>(
         '/trip-service/api/trips/active/driver/$driverId',
         fromJson: (json) {
-          print('🚗 DEBUG: Driver trips response:');
-          print(json);
+          print('🚗 DRIVER_TRIPS: raw json type=${json.runtimeType}');
+          print('🚗 DRIVER_TRIPS: raw json=$json');
           
           if (json is Map<String, dynamic>) {
             final result = ApiResponse<List<DriverTripResponse>>.fromJson(
@@ -169,7 +170,25 @@ class TripApiService {
       
       return response;
     } catch (e) {
+      print('🚗 DRIVER_TRIPS: EXCEPTION type=${e.runtimeType} message=$e');
       rethrow;
+    }
+  }
+
+  /// GET /api/trips/{tripId}
+  /// Get full trip details including bookings/passengers
+  Future<Map<String, dynamic>?> getTripById(String tripId) async {
+    try {
+      final response = await _dioClient.get<dynamic>(
+        '/trip-service/api/trips/$tripId',
+      );
+      if (response is Map<String, dynamic>) {
+        return response['data'] as Map<String, dynamic>?;
+      }
+      return null;
+    } catch (e) {
+      print('⚠️ getTripById failed: $e');
+      return null;
     }
   }
 
@@ -475,5 +494,93 @@ class TripApiService {
 
   double _degreesToRadians(double degrees) {
     return degrees * pi / 180;
+  }
+
+  // ─── Admin endpoints ──────────────────────────────────────────────────────
+
+  static const _adminHeaders = {'X-User-Role': 'ADMIN'};
+
+  /// GET /trip-service/api/admin/trips/upcoming
+  /// Returns paginated upcoming trips for admin overview.
+  Future<Map<String, dynamic>> adminListUpcomingTrips({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final response = await _dioClient.get<dynamic>(
+      '/trip-service/api/admin/trips/upcoming',
+      queryParameters: {'page': page, 'size': size},
+      headers: _adminHeaders,
+    );
+    if (response is Map<String, dynamic>) {
+      final data = response['data'];
+      if (data is Map<String, dynamic>) return data;
+      // some endpoints return a plain list under data
+      if (data is List) return {'content': data, 'totalElements': data.length, 'totalPages': 1};
+    }
+    return {'content': [], 'totalElements': 0, 'totalPages': 0};
+  }
+
+  /// GET /trip-service/api/admin/trips
+  /// Returns paginated all trips for admin overview.
+  Future<Map<String, dynamic>> adminListAllTrips({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final response = await _dioClient.get<dynamic>(
+      '/trip-service/api/admin/trips',
+      queryParameters: {'page': page, 'size': size},
+      headers: _adminHeaders,
+    );
+    if (response is Map<String, dynamic>) {
+      final data = response['data'];
+      if (data is Map<String, dynamic>) return data;
+      if (data is List) return {'content': data, 'totalElements': data.length, 'totalPages': 1};
+    }
+    return {'content': [], 'totalElements': 0, 'totalPages': 0};
+  }
+
+  /// GET /trip-service/api/admin/trips/{id}
+  /// Returns full trip detail for admin.
+  Future<Map<String, dynamic>?> adminGetTrip(String tripId) async {
+    try {
+      final response = await _dioClient.get<dynamic>(
+        '/trip-service/api/admin/trips/$tripId',
+        headers: _adminHeaders,
+      );
+      if (response is Map<String, dynamic>) {
+        final data = response['data'];
+        if (data is Map<String, dynamic>) return data;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// GET /trip-service/api/admin/bookings — load all, filter by tripId client-side
+  Future<List<Map<String, dynamic>>> adminGetBookingsForTrip(String tripId) async {
+    try {
+      final response = await _dioClient.get<dynamic>(
+        '/trip-service/api/admin/bookings',
+        queryParameters: {'page': 0, 'size': 100},
+        headers: _adminHeaders,
+      );
+      if (response is Map<String, dynamic>) {
+        final data = response['data'];
+        List<dynamic> all = [];
+        if (data is Map<String, dynamic>) {
+          all = data['content'] is List ? data['content'] as List : [];
+        } else if (data is List) {
+          all = data;
+        }
+        return all
+            .whereType<Map<String, dynamic>>()
+            .where((b) => b['tripId'] == tripId)
+            .toList();
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
   }
 }

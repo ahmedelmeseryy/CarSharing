@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ':*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter emulators:*)",
+      "Bash(curl -s --insecure \"http://35.186.208.67/user-service/v3/api-docs\")",
+      "Bash(curl -s --insecure \"http://35.186.208.67/trip-service/api/trips/69d9735c5ea580513133cd84\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); data=d.get\\('data',{}\\); print\\(json.dumps\\({k:v for k,v in data.items\\(\\) if k in ['tripId','tripStatus','passengers','bookedSeats','availableSeats','totalSeats','pricePerSeat']}, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; print\\(json.dumps\\(json.load\\(sys.stdin\\), indent=2\\)\\)\")",
+      "Bash(curl -s 'http://35.186.208.67/user-service/v3/api-docs')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); paths=[p for p in d.get\\('paths',{}\\) if 'vehicle' in p.lower\\(\\)]; print\\('\\\\n'.join\\(paths\\)\\)\")",
+      "Bash(curl -s 'http://35.186.208.67/trip-service/v3/api-docs')",
+      "Bash(curl -s --max-time 15 \"http://35.186.208.67/trip-service/api/trips/search/matching-route?sourceLatitude=52.52&sourceLongitude=13.405&destinationLatitude=52.4&destinationLongitude=13.3&effectiveUserId=test@test.com&requestedSeats=1\" -H \"Accept: application/json\")",
+      "Bash(curl -s --max-time 15 \"http://35.186.208.67/trip-service/api/trips/search/near-source?latitude=52.52&longitude=13.405&radiusKm=10\" -H \"Accept: application/json\")"
+    ]
+  }
+}

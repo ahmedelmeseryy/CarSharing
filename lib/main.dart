@@ -11,6 +11,11 @@ import 'core/pages/api_debug_screen.dart';
 import 'rest_integration_tester.dart';
 import 'features/auth/data/services/auth_api_service.dart';
 import 'admin_dashboard_page.dart';
+import 'pages/auth/forgot_password_page.dart';
+import 'pages/auth/change_password_page.dart';
+import 'pages/driver/register_vehicle_page.dart';
+import 'features/user/data/services/user_api_service.dart';
+import 'core/network/dio_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -162,9 +167,6 @@ class _SignUpPageState extends State<SignUpPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _repeatPasswordController = TextEditingController();
-  final TextEditingController _carModelController = TextEditingController();
-  final TextEditingController _carColorController = TextEditingController();
-  final TextEditingController _carYearController = TextEditingController();
   final TextEditingController _licenseNumberController = TextEditingController();
   bool _isLoading = false;
   String _selectedRole = 'user'; // 'user' or 'driver'
@@ -220,9 +222,6 @@ class _SignUpPageState extends State<SignUpPage> {
           age: _ageController.text.trim(),
           phone: _phoneController.text.trim(),
           role: _selectedRole,
-          carModel: _selectedRole == 'driver' ? _carModelController.text.trim() : null,
-          carColor: _selectedRole == 'driver' ? _carColorController.text.trim() : null,
-          carYear: _selectedRole == 'driver' ? _carYearController.text.trim() : null,
           licenseNumber: _selectedRole == 'driver' ? _licenseNumberController.text.trim() : null,
         );
 
@@ -232,16 +231,22 @@ class _SignUpPageState extends State<SignUpPage> {
           surname: _surnameController.text.trim(),
           age: _ageController.text.trim(),
           phone: _phoneController.text.trim(),
-          carModel: _selectedRole == 'driver' ? _carModelController.text.trim() : null,
-          carColor: _selectedRole == 'driver' ? _carColorController.text.trim() : null,
-          carYear: _selectedRole == 'driver' ? _carYearController.text.trim() : null,
         );
 
         if (!mounted) return;
         setState(() => _isLoading = false);
 
         if (_selectedRole == 'driver') {
-          Navigator.pushReplacementNamed(context, '/driver-dashboard');
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RegisterVehiclePage(
+                onRegistered: () {
+                  Navigator.pushReplacementNamed(context, '/driver-dashboard');
+                },
+              ),
+            ),
+          );
         } else if (_selectedRole == 'admin') {
           Navigator.pushReplacementNamed(context, '/admin-dashboard');
         } else {
@@ -400,39 +405,6 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
-                      controller: _carModelController,
-                      decoration: const InputDecoration(
-                          labelText: 'Car Model*'),
-                      validator: (value) => value?.isEmpty ?? true
-                          ? 'Car model is required for drivers'
-                          : null,
-              ),
-              const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _carColorController,
-                      decoration: const InputDecoration(
-                          labelText: 'Car Color*'),
-                      validator: (value) => value?.isEmpty ?? true
-                          ? 'Car color is required for drivers'
-                          : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _carYearController,
-                      decoration: const InputDecoration(
-                          labelText: 'Car Year*'),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value?.isEmpty ?? true) return 'Car year is required';
-                        final year = int.tryParse(value!);
-                        if (year == null || year < 1900 || year > DateTime.now().year) {
-                          return 'Please enter a valid car year';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
                       controller: _licenseNumberController,
                       decoration: const InputDecoration(
                           labelText: 'Driver License Number*'),
@@ -501,32 +473,15 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  Future<void> _resetPassword() async {
-    final email = _emailController.text.trim();
-    if (!EmailValidator.validate(email)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid email address.')),
-      );
-      return;
-    }
-
-    // the reset password feature is not codded in API yet
-
-    // try {
-    //   await AuthApiService().resetPassword(email);
-    //   if (!mounted) return;
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     const SnackBar(
-    //       content: Text('Password reset email sent! Check your inbox.'),
-    //       backgroundColor: Colors.green,
-    //     ),
-    //   );
-    // } catch (e) {
-    //   if (!mounted) return;
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     const SnackBar(content: Text('Failed to send reset email.')),
-    //   );
-    // }
+  void _resetPassword() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ForgotPasswordPage(
+          initialEmail: _emailController.text.trim(),
+        ),
+      ),
+    );
   }
 
   @override
@@ -609,13 +564,12 @@ class _ProfilePageState extends State<ProfilePage> {
   final TextEditingController _surnameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _carModelController = TextEditingController();
-  final TextEditingController _carColorController = TextEditingController();
-  final TextEditingController _carYearController = TextEditingController();
   bool _isEditing = false;
   bool _isLoading = true;
   String _userRole = 'user';
   String _email = '';
+  List<Map<String, dynamic>> _vehicles = [];
+  bool _vehiclesLoading = false;
 
   @override
   void initState() {
@@ -632,12 +586,75 @@ class _ProfilePageState extends State<ProfilePage> {
     _userRole = await storage.getUserRole() ?? 'user';
     _email = await storage.getUserEmail() ?? '';
     if (_userRole == 'driver') {
-      _carModelController.text = await storage.getUserCarModel() ?? '';
-      _carColorController.text = await storage.getUserCarColor() ?? '';
-      _carYearController.text = await storage.getUserCarYear() ?? '';
+      await _loadVehicles();
     }
     setState(() => _isLoading = false);
   }
+
+
+  Future<void> _loadVehicles() async {
+    setState(() => _vehiclesLoading = true);
+    try {
+      final userId = await TokenStorage().getUserId() ?? '';
+      final vehicles = await UserApiService(DioClient()).getVehiclesByUserId(userId);
+      setState(() {
+        _vehicles = vehicles;
+        _vehiclesLoading = false;
+      });
+    } catch (_) {
+      setState(() => _vehiclesLoading = false);
+    }
+  }
+
+  void _showVehicleDetails(Map<String, dynamic> v) {
+    final displayText = v['text'] as String? ?? 'Unknown';
+    final plateOrId = v['value'] as String? ?? 'N/A';
+    final seats = v['seatingCapacity'] ?? 'N/A';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Vehicle Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailRow(Icons.directions_car, 'Name / Color', displayText),
+            const SizedBox(height: 12),
+            _detailRow(Icons.credit_card, 'Plate Number', plateOrId),
+            const SizedBox(height: 12),
+            _detailRow(Icons.event_seat, 'Seating Capacity', '$seats seats'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 20, color: Colors.blue),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
 
   Future<void> _save() async {
     if (_formKey.currentState!.validate()) {
@@ -648,9 +665,6 @@ class _ProfilePageState extends State<ProfilePage> {
           surname: _surnameController.text.trim(),
           age: _ageController.text.trim(),
           phone: _phoneController.text.trim(),
-          carModel: _userRole == 'driver' ? _carModelController.text.trim() : null,
-          carColor: _userRole == 'driver' ? _carColorController.text.trim() : null,
-          carYear: _userRole == 'driver' ? _carYearController.text.trim() : null,
         );
         if (!mounted) return;
         setState(() {
@@ -780,25 +794,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 'Driver Information',
                                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
                               ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _carModelController,
-                                decoration: const InputDecoration(labelText: 'Car Model'),
-                                enabled: _isEditing,
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _carColorController,
-                                decoration: const InputDecoration(labelText: 'Car Color'),
-                                enabled: _isEditing,
-                              ),
-                              const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _carYearController,
-                                decoration: const InputDecoration(labelText: 'Car Year'),
-                                keyboardType: TextInputType.number,
-                                enabled: _isEditing,
-                              ),
                               const SizedBox(height: 24),
                               Center(
                                 child: ElevatedButton.icon(
@@ -811,12 +806,154 @@ class _ProfilePageState extends State<ProfilePage> {
                                   label: const Text('Upload Driver License'),
                                   style: ElevatedButton.styleFrom(
                                     foregroundColor: Colors.blue,
-        backgroundColor: Colors.white,
+                                    backgroundColor: Colors.white,
                                     side: const BorderSide(color: Colors.blue),
                                   ),
                                 ),
                               ),
+                              const SizedBox(height: 24),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'My Vehicles (${_vehicles.length}/1)',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                    ),
+                                  ),
+                                  if (_vehiclesLoading)
+                                    const SizedBox(
+                                      height: 16,
+                                      width: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                    )
+                                  else
+                                    IconButton(
+                                      icon: const Icon(Icons.refresh, size: 20),
+                                      onPressed: _loadVehicles,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              if (!_vehiclesLoading && _vehicles.isEmpty)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.orange.shade200),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.warning_amber, color: Colors.orange, size: 18),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'No vehicles registered. Register one to create trips.',
+                                          style: TextStyle(fontSize: 13, color: Colors.orange),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              else
+                                ...(_vehicles.map((v) {
+                                  final displayText = v['text'] as String? ?? 'Unknown';
+                                  final plateOrId = v['value'] as String? ?? '';
+                                  final seats = v['seatingCapacity'] ?? '?';
+                                  return Card(
+                                    margin: const EdgeInsets.only(bottom: 8),
+                                    child: ListTile(
+                                      leading: const Icon(Icons.directions_car, color: Colors.blue),
+                                      title: Text(displayText),
+                                      subtitle: Text('Plate: $plateOrId • $seats seats'),
+                                      trailing: IconButton(
+                                        icon: Icon(Icons.delete_outline, color: Colors.red.shade200),
+                                        tooltip: 'Delete vehicle',
+                                        onPressed: () {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text('Contact admin to remove vehicle'),
+                                              duration: Duration(seconds: 3),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                      onTap: () => _showVehicleDetails(v),
+                                    ),
+                                  );
+                                })),
+                              const SizedBox(height: 12),
+                              if (_vehicles.isNotEmpty)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.amber.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: Colors.amber.shade300),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.info_outline, color: Colors.amber, size: 18),
+                                      SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Vehicle registration is temporarily limited to 1 per driver.',
+                                          style: TextStyle(fontSize: 13, color: Colors.black87),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              OutlinedButton.icon(
+                                onPressed: _vehicles.isNotEmpty
+                                    ? null
+                                    : () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => const RegisterVehiclePage(),
+                                          ),
+                                        );
+                                        _loadVehicles();
+                                      },
+                                icon: const Icon(Icons.add),
+                                label: Text(
+                                  _vehicles.isNotEmpty
+                                      ? 'Vehicle Limit Reached (1/1)'
+                                      : 'Register Vehicle',
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  minimumSize: const Size(double.infinity, 48),
+                                  foregroundColor: _vehicles.isNotEmpty ? Colors.grey : Colors.blue,
+                                  side: BorderSide(
+                                    color: _vehicles.isNotEmpty ? Colors.grey : Colors.blue,
+                                  ),
+                                ),
+                              ),
                             ]
+                          ,
+                            const SizedBox(height: 24),
+                            OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const ChangePasswordPage()),
+                                );
+                              },
+                              icon: const Icon(Icons.lock_outline),
+                              label: const Text('Change Password'),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 48),
+                                foregroundColor: Colors.blue,
+                                side: const BorderSide(color: Colors.blue),
+                              ),
+                            ),
                           ],
                         ),
                       ),

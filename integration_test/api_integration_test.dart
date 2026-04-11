@@ -245,10 +245,10 @@ void main() {
         // Assert - Verify all required response fields
         expect(response.data?.tripId, isNotNull);
         expect(response.data?.vehicleNumber, isNotNull);
-        expect(response.data?.sourceAddress.latitude, isNotNull);
-        expect(response.data?.sourceAddress.longitude, isNotNull);
-        expect(response.data?.destinationAddress.latitude, isNotNull);
-        expect(response.data?.destinationAddress.longitude, isNotNull);
+        expect(response.data?.sourceAddress?.latitude, isNotNull);
+        expect(response.data?.sourceAddress?.longitude, isNotNull);
+        expect(response.data?.destinationAddress?.latitude, isNotNull);
+        expect(response.data?.destinationAddress?.longitude, isNotNull);
         expect(response.data?.tripStartDateTime, isNotNull);
         expect(response.data?.tripTimezone, isNotNull);
         expect(response.data?.routeGeometry, isNotNull);

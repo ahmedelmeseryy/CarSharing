@@ -8,85 +8,84 @@ class DriverWelcomeTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(30),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.drive_eta,
-                    size: 80,
-                    color: Colors.blue.shade700,
-                  ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(height: 32),
-                Text(
-                  'Welcome, Driver',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue.shade900,
-                      ),
-                  textAlign: TextAlign.center,
+                child: Icon(
+                  Icons.drive_eta,
+                  size: 72,
+                  color: Colors.blue.shade700,
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  'Create a trip and start earning',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.grey.shade600,
-                      ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 48),
-                SizedBox(
-                  width: double.infinity,
-                  height: 56,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.add, size: 28),
-                    label: const Text(
-                      'Create Trip',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Welcome, Driver',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue.shade900,
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue.shade700,
-                      foregroundColor: Colors.white,
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Create a trip and start earning',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.grey.shade600,
                     ),
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AddTripPage(),
-                        ),
-                      );
-                    },
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 36),
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.add, size: 28),
+                  label: const Text(
+                    'Create Trip',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade700,
+                    foregroundColor: Colors.white,
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddTripPage(),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 40),
-                _buildInfoCard(
-                  icon: Icons.event_available,
-                  title: 'Manage Trips',
-                  description: 'Track bookings in My Trips',
-                  color: Colors.green,
-                ),
-                const SizedBox(height: 16),
-                _buildInfoCard(
-                  icon: Icons.attach_money,
-                  title: 'Earn More',
-                  description: 'Offer competitive prices',
-                  color: Colors.orange,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 24),
+              _buildInfoCard(
+                icon: Icons.event_available,
+                title: 'Manage Trips',
+                description: 'Track bookings in My Trips',
+                color: Colors.green,
+              ),
+              const SizedBox(height: 16),
+              _buildInfoCard(
+                icon: Icons.attach_money,
+                title: 'Earn More',
+                description: 'Offer competitive prices to attract more passengers',
+                color: Colors.orange,
+              ),
+            ],
           ),
         ),
       ),
@@ -102,9 +101,9 @@ class DriverWelcomeTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [

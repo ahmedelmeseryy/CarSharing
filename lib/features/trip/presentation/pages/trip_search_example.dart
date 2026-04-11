@@ -189,7 +189,7 @@ class BookingConfirmationExample extends ConsumerWidget {
                       trip.destinationAddress.placeAddress ?? 'Unknown',
                     ),
                     _buildDetailRow('🕒 Depart', trip.tripStartDateTime.toIso8601String()),
-                    _buildDetailRow('🚗 Vehicle', trip.vehicleNumber),
+                    _buildDetailRow('🚗 Vehicle', trip.vehicleNumber ?? 'N/A'),
                     _buildDetailRow(
                       '💵 Estimated Fare',
                       '₹${trip.estimatedFare.toStringAsFixed(2)}',
@@ -299,7 +299,7 @@ class BookingConfirmationExample extends ConsumerWidget {
     final joinRequest = JoinTripRequest(
       tripId: trip.tripId ?? 'unknown',
       passengerId: 'current-user-id', // TODO: Get from auth provider
-      driverId: trip.driverId,
+      driverId: trip.driverId ?? '',
       pickupPoint: trip.sourceAddress,
       destinationPoint: trip.destinationAddress,
       rideStartTime: trip.tripStartDateTime.toIso8601String(),

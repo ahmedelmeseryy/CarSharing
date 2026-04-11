@@ -214,7 +214,6 @@ class _OfferTripExampleState extends ConsumerState<OfferTripExample> {
 
     final offerRequest = OfferRideRequest(
       driverId: _driverId,
-      vehicleNumber: vehicleController.text,
       sourceAddress: const Points(
         latitude: 52.52,
         longitude: 13.405,

@@ -132,6 +132,43 @@ class AuthApiService {
     return data;
   }
 
+  // ─── Change Password ──────────────────────────────────────────────────────
+
+  /// PUT /auth-service/api/auth/change-password
+  /// Requires valid JWT. Returns 401 if currentPassword is wrong.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _client.put(
+      '/auth-service/api/auth/change-password',
+      data: {'currentPassword': currentPassword, 'newPassword': newPassword},
+    );
+  }
+
+  // ─── Forgot Password ──────────────────────────────────────────────────────
+
+  /// POST /auth-service/api/auth/reset-password
+  /// Sends a reset token to the user's email.
+  Future<void> resetPassword(String email) async {
+    await _client.post(
+      '/auth-service/api/auth/reset-password',
+      data: {'email': email},
+    );
+  }
+
+  /// POST /auth-service/api/auth/reset-password/confirm
+  /// Resets the password using the token received by email.
+  Future<void> confirmResetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _client.post(
+      '/auth-service/api/auth/reset-password/confirm',
+      data: {'token': token, 'newPassword': newPassword},
+    );
+  }
+
   // ─── Logout ───────────────────────────────────────────────────────────────
 
   /// No logout endpoint exists on the server. Just clears local tokens.

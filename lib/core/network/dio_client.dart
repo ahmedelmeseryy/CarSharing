@@ -91,12 +91,14 @@ class DioClient {
   Future<T> get<T>(
     String endpoint, {
     Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
     try {
       final response = await _dio.get<dynamic>(
         endpoint,
         queryParameters: queryParameters,
+        options: headers != null ? Options(headers: headers) : null,
       );
       return _handleResponse(response, fromJson);
     } on DioException catch (e) {
@@ -109,6 +111,7 @@ class DioClient {
     String endpoint, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
     try {
@@ -116,6 +119,7 @@ class DioClient {
         endpoint,
         data: data,
         queryParameters: queryParameters,
+        options: headers != null ? Options(headers: headers) : null,
       );
       return _handleResponse(response, fromJson);
     } on DioException catch (e) {
@@ -128,6 +132,7 @@ class DioClient {
     String endpoint, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
     try {
@@ -135,6 +140,7 @@ class DioClient {
         endpoint,
         data: data,
         queryParameters: queryParameters,
+        options: headers != null ? Options(headers: headers) : null,
       );
       return _handleResponse(response, fromJson);
     } on DioException catch (e) {
@@ -147,6 +153,7 @@ class DioClient {
     String endpoint, {
     dynamic data,
     Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
     T Function(dynamic json)? fromJson,
   }) async {
     try {
@@ -154,6 +161,7 @@ class DioClient {
         endpoint,
         data: data,
         queryParameters: queryParameters,
+        options: headers != null ? Options(headers: headers) : null,
       );
       return _handleResponse(response, fromJson);
     } on DioException catch (e) {
@@ -214,9 +222,20 @@ class DioClient {
   ApiException _handleStatusCode(int statusCode, String message, DioException error) {
     // Extract the actual message from the server response body if available
     final responseData = error.response?.data;
-    final serverMessage = (responseData is Map)
-        ? (responseData['message'] as String? ?? message)
-        : message;
+    String serverMessage = message;
+    if (responseData is Map) {
+      // Try nested error.message first (e.g. {"error":{"message":"..."}, "message":"An error occurred"})
+      final nested = responseData['error'];
+      if (nested is Map && nested['message'] is String) {
+        serverMessage = nested['message'] as String;
+      } else {
+        serverMessage = (responseData['message'] as String?)
+            ?? (responseData['detail'] as String?)
+            ?? message;
+      }
+    } else if (responseData is String && responseData.isNotEmpty) {
+      serverMessage = responseData;
+    }
 
     switch (statusCode) {
       case 400:
@@ -232,6 +251,13 @@ class DioClient {
         return ForbiddenException(message: serverMessage, stackTrace: error.stackTrace);
       case 404:
         return NotFoundException(message: serverMessage, stackTrace: error.stackTrace);
+      case 409:
+        return ClientException(
+          message: serverMessage,
+          statusCode: 409,
+          code: 'CONFLICT',
+          stackTrace: error.stackTrace,
+        );
       case 500:
       case 502:
       case 503:
