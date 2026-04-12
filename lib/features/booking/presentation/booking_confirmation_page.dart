@@ -4,7 +4,7 @@ import 'package:confetti/confetti.dart';
 
 import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
-import 'package:carsharing/user_dashboard_page.dart';
+import 'package:carsharing/features/passenger/presentation/user_dashboard_page.dart';
 
 class BookingConfirmationPage extends StatefulWidget {
   final Trip trip;

@@ -1,4 +1,4 @@
-import 'package:carsharing/widgets/address_autocomplete_field.dart';
+import 'package:carsharing/shared/widgets/address_autocomplete_field.dart';
 import 'package:carsharing/features/trip/data/models/offer_ride_request.dart';
 import 'package:carsharing/features/trip/data/models/points.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
@@ -6,7 +6,7 @@ import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/core/storage/secure_storage.dart';
 import 'package:carsharing/core/network/dio_client.dart';
 import 'package:carsharing/features/user/data/services/user_api_service.dart';
-import 'package:carsharing/pages/driver/register_vehicle_page.dart';
+import 'package:carsharing/features/driver/presentation/register_vehicle_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';

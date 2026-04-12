@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:carsharing/pages/user/trip_search_page.dart';
+import 'package:carsharing/features/passenger/presentation/trip_search_page.dart';
 
 class WelcomeTab extends StatelessWidget {
   const WelcomeTab({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:carsharing/pages/user/tabs/welcome_tab.dart';
-import 'package:carsharing/main.dart'; // For ProfilePage
+import 'package:carsharing/features/passenger/presentation/tabs/welcome_tab.dart';
+import 'package:carsharing/features/profile/presentation/profile_page.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
@@ -401,6 +401,11 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
 
                                       ref.invalidate(
                                         getUpcomingBookingsForPassengerProvider(userId),
+                                      );
+
+                                      // Refresh driver's trip list so booked/available seats update
+                                      ref.invalidate(
+                                        getUpcomingTripsForDriverProvider(booking.driverId),
                                       );
 
                                       ScaffoldMessenger.of(context).showSnackBar(

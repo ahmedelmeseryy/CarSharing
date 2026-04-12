@@ -5,8 +5,7 @@ import 'package:carsharing/core/providers/app_providers.dart';
 import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
-import 'package:carsharing/core/storage/secure_storage.dart';
-import 'package:carsharing/services/location_service.dart';
+import 'package:carsharing/shared/services/location_service.dart';
 
 class AvailableTripsTab extends ConsumerStatefulWidget {
   final String searchQuery;
@@ -106,7 +105,7 @@ class _AvailableTripsTabState extends ConsumerState<AvailableTripsTab> {
             final trip = filtered[index];
             final dateStr = DateFormat.yMd().add_Hm().format(trip.tripStartDateTime.toLocal());
             final price = trip.estimatedFare.toStringAsFixed(2);
-            final seats = trip.availableSeats;
+            final seats = trip.freeSeats;
 
             return Card(
               elevation: 2,

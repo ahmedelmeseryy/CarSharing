@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:carsharing/features/trip/data/models/trip.dart';
-import 'package:carsharing/pages/user/payment_method_page.dart';
+import 'package:carsharing/features/passenger/presentation/payment_method_page.dart';
 
 /// Trip booking detail page with seat selection
 class TripBookingDetailPage extends ConsumerStatefulWidget {
@@ -25,7 +25,7 @@ class _TripBookingDetailPageState extends ConsumerState<TripBookingDetailPage> {
   @override
   Widget build(BuildContext context) {
     final price = widget.trip.estimatedFare.toStringAsFixed(2);
-    final availableSeats = widget.trip.availableSeats;
+    final availableSeats = widget.trip.freeSeats;
     final formattedDate = DateFormat.yMd()
         .add_jm()
         .format(widget.trip.tripStartDateTime.toLocal());

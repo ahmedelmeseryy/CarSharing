@@ -212,11 +212,14 @@ class DioClient {
   }
 
   ApiException _handleStatusCode(int statusCode, String message, DioException error) {
-    // Extract the actual message from the server response body if available
+    // Extract the actual message and code from the server response body if available
     final responseData = error.response?.data;
     String serverMessage = message;
+    String? serverCode;
     if (responseData is Map) {
-      // Try nested error.message first (e.g. {"error":{"message":"..."}, "message":"An error occurred"})
+      // Preserve the server-provided error code (e.g. "ALREADY_BOOKED", "TRIP_FULL")
+      serverCode = responseData['code'] as String?;
+      // Try nested error.message first, then top-level message
       final nested = responseData['error'];
       if (nested is Map && nested['message'] is String) {
         serverMessage = nested['message'] as String;
@@ -234,7 +237,7 @@ class DioClient {
         return ClientException(
           message: serverMessage,
           statusCode: 400,
-          code: 'BAD_REQUEST',
+          code: serverCode ?? 'BAD_REQUEST',
           stackTrace: error.stackTrace,
         );
       case 401:
@@ -247,7 +250,7 @@ class DioClient {
         return ClientException(
           message: serverMessage,
           statusCode: 409,
-          code: 'CONFLICT',
+          code: serverCode ?? 'CONFLICT',
           stackTrace: error.stackTrace,
         );
       case 500:
@@ -256,13 +259,14 @@ class DioClient {
         return ServerException(
           message: serverMessage,
           statusCode: statusCode,
-          code: 'SERVER_ERROR',
+          code: serverCode ?? 'SERVER_ERROR',
           stackTrace: error.stackTrace,
         );
       default:
         return ClientException(
           message: serverMessage,
           statusCode: statusCode,
+          code: serverCode,
           stackTrace: error.stackTrace,
         );
     }

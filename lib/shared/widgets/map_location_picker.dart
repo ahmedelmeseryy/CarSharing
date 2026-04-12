@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:carsharing/services/location_service.dart';
-import 'package:carsharing/services/places_service.dart';
+import 'package:carsharing/shared/services/location_service.dart';
+import 'package:carsharing/shared/services/places_service.dart';
 
 class MapLocationPicker extends StatefulWidget {
   final Function(double latitude, double longitude, String address)? onLocationSelected;

@@ -21,7 +21,16 @@
       "Bash(cat)",
       "Bash(bash /tmp/check_unused.sh)",
       "Bash(ls -la /home/sumeet/Projects/CarSharing/*.yaml /home/sumeet/Projects/CarSharing/*.json)",
-      "Bash(ls -la /home/sumeet/Projects/CarSharing/*.json)"
+      "Bash(ls -la /home/sumeet/Projects/CarSharing/*.json)",
+      "Bash(mv pages/auth/change_password_page.dart features/auth/presentation/)",
+      "Bash(mv pages/auth/forgot_password_page.dart features/auth/presentation/)",
+      "Bash(mv add_trip_page.dart features/trip/presentation/)",
+      "Bash(mv pages/user/booking_confirmation_page.dart features/booking/presentation/)",
+      "Bash(mv pages/user/trip_booking_detail_page.dart features/booking/presentation/)",
+      "Bash(head -n 544 /home/sumeet/Projects/CarSharing/lib/main.dart)",
+      "Bash(mv /tmp/main_trimmed.dart /home/sumeet/Projects/CarSharing/lib/main.dart)",
+      "Bash(sudo apt:*)",
+      "Bash(grep -A 10 '_$CancelTripRequestToJson' /home/sumeet/Projects/CarSharing/lib/features/booking/data/models/booking_requests.g.dart)"
     ]
   }
 }

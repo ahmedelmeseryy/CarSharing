@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'pages/driver/driver_trip_details_page.dart';
-import 'pages/driver/tabs/driver_welcome_tab.dart';
-import 'package:carsharing/main.dart'; // For ProfilePage
+import 'package:carsharing/features/driver/presentation/driver_trip_details_page.dart';
+import 'package:carsharing/features/driver/presentation/tabs/driver_welcome_tab.dart';
+import 'package:carsharing/features/profile/presentation/profile_page.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
@@ -264,12 +264,11 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
               final to = trip.destinationAddress?.placeAddress ?? 'N/A';
               final seats = trip.totalSeats;
               final bookedSeats = trip.bookedSeats;
-              final bookingCount = trip.passengers?.length ?? 0;
-              
+
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: ListTile(
-                  leading: bookingCount > 0
+                  leading: bookedSeats > 0
                       ? Stack(
                           children: [
                             const CircleAvatar(
@@ -286,7 +285,7 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
                                   shape: BoxShape.circle,
                                 ),
                                 child: Text(
-                                  '$bookingCount',
+                                  '$bookedSeats',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 10,

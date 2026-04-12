@@ -9,7 +9,6 @@ class DriverProfilePage extends StatelessWidget {
     required this.driverId,
     required this.driverName,
   });
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(

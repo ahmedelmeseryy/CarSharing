@@ -1,12 +1,11 @@
-import 'package:carsharing/widgets/address_autocomplete_field.dart';
+import 'package:carsharing/shared/widgets/address_autocomplete_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
-import 'package:carsharing/features/trip/data/models/trip.dart';
-import 'package:carsharing/widgets/map_location_picker.dart';
-import 'package:carsharing/services/location_service.dart';
+import 'package:carsharing/shared/widgets/map_location_picker.dart';
+import 'package:carsharing/shared/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:carsharing/pages/user/trip_search_results_page.dart';
+import 'package:carsharing/features/passenger/presentation/trip_search_results_page.dart';
 
 class TripSearchPage extends ConsumerStatefulWidget {
   const TripSearchPage({super.key});
@@ -164,7 +163,7 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
           if (fare < _selectedMinPrice || fare > _selectedMaxPrice) {
             return false;
           }
-          if (trip.availableSeats < _selectedSeats) {
+          if (trip.freeSeats < _selectedSeats) {
             return false;
           }
           return true;

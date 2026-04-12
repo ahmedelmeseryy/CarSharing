@@ -4,7 +4,7 @@ import 'package:carsharing/core/storage/secure_storage.dart';
 import 'package:carsharing/features/auth/data/services/auth_api_service.dart';
 import 'package:carsharing/features/trip/data/services/trip_api_service.dart';
 import 'package:carsharing/features/user/data/services/user_api_service.dart';
-import 'package:carsharing/pages/admin/seed_trips_page.dart';
+import 'package:carsharing/features/admin/presentation/seed_trips_page.dart';
 
 /// Resolves a display name from a user map.
 String _resolveName(Map<String, dynamic> u) {

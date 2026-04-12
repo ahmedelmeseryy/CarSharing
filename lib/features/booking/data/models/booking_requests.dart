@@ -52,7 +52,7 @@ class JoinTripRequest {
 
 /// Request body for POST /api/bookings/cancel or POST /api/trips/cancel
 /// Maps from Swagger: CancelTripRequest
-@JsonSerializable()
+@JsonSerializable(includeIfNull: false)
 class CancelTripRequest {
   final String userId;
   final String tripId;

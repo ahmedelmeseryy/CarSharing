@@ -1,4 +1,4 @@
-import 'package:carsharing/pages/user/booking_confirmation_page.dart';
+import 'package:carsharing/features/booking/presentation/booking_confirmation_page.dart';
 import 'package:carsharing/core/storage/secure_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

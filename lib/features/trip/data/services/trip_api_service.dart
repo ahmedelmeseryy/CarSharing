@@ -336,7 +336,7 @@ class TripApiService {
           trip.destinationAddress.latitude,
           trip.destinationAddress.longitude,
         );
-        return destDistance <= destRadiusKm && trip.availableSeats >= requestedSeats;
+        return destDistance <= destRadiusKm && trip.freeSeats >= requestedSeats;
       }).toList();
 
       return ApiResponse<List<Trip>>(data: matchingTrips);

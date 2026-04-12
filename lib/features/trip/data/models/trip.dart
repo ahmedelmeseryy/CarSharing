@@ -103,6 +103,13 @@ class Trip {
   /// Flat price per seat (€). Returns 0 if not set.
   double get estimatedFare => pricePerSeat ?? 0;
 
+  /// Available seats — uses the API field when present, otherwise derives from totalSeats - bookedSeats.
+  /// The backend often omits availableSeats from search responses.
+  int get freeSeats {
+    if (availableSeats > 0) return availableSeats;
+    return (totalSeats - bookedSeats).clamp(0, totalSeats);
+  }
+
   @override
   String toString() =>
       'Trip($tripId: ${sourceAddress.placeAddress} → ${destinationAddress.placeAddress})';

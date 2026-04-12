@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import 'package:carsharing/features/trip/data/models/trip.dart';
-import 'package:carsharing/pages/user/trip_booking_detail_page.dart';
+import 'package:carsharing/features/booking/presentation/trip_booking_detail_page.dart';
 
 class TripSearchResultsPage extends ConsumerWidget {
   final List<Trip> trips;
@@ -80,7 +80,7 @@ class TripSearchResultsPage extends ConsumerWidget {
 
   Widget _buildTripCard(BuildContext context, WidgetRef ref, Trip trip) {
     final price = trip.estimatedFare.toStringAsFixed(2);
-    final seats = trip.availableSeats;
+    final seats = trip.freeSeats;
     final formattedDate =
         DateFormat.yMd().add_jm().format(trip.tripStartDateTime.toLocal());
 

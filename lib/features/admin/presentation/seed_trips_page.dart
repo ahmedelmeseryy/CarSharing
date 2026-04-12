@@ -1,4 +1,4 @@
-import 'package:carsharing/utils/seed_test_trips.dart';
+import 'package:carsharing/shared/utils/seed_test_trips.dart';
 import 'package:flutter/material.dart';
 
 /// Admin page to seed the database with test trips

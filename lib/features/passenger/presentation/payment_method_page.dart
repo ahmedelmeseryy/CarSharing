@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
+import 'package:carsharing/core/network/api_exceptions.dart';
 import 'package:carsharing/core/providers/mutation_providers.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
-import 'package:carsharing/pages/user/booking_confirmation_page.dart';
+import 'package:carsharing/features/booking/presentation/booking_confirmation_page.dart';
 
 enum PaymentMethod { cash, card }
 
@@ -302,11 +303,23 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
       // Handle the state
       if (state.hasError) {
         if (!mounted) return;
+        final err = state.error;
+        String message;
+        if (err is ApiException) {
+          if (err.code == 'ALREADY_BOOKED') {
+            message = 'You already have a booking for this trip. '
+                'If you cancelled it, the server may need a moment to process — please try again shortly.';
+          } else {
+            message = err.message;
+          }
+        } else {
+          message = 'Booking failed. Please try again.';
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Booking error: ${state.error}'),
+            content: Text(message),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
+            duration: const Duration(seconds: 6),
           ),
         );
         if (mounted) {
@@ -349,9 +362,16 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
       
       // Add to local cache
       ref.read(localBookingsCacheProvider(userId).notifier).addBooking(booking);
-      
+
       // Invalidate bookings cache
       ref.invalidate(getUpcomingBookingsForPassengerProvider(userId));
+
+      // Refresh driver's trip list so booked/available seats update
+      ref.invalidate(getUpcomingTripsForDriverProvider(booking.driverId));
+
+      // Invalidate search results so next search reflects updated seat counts
+      ref.invalidate(searchMatchingRouteProvider);
+      ref.invalidate(searchNearSourceProvider);
       
       // Navigate to confirmation page
       if (mounted) {

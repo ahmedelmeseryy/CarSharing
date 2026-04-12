@@ -56,7 +56,7 @@ class _TripSearchTestPageState extends ConsumerState<TripSearchTestPage> {
       _log('✅ SUCCESS! Found ${trips.length} trips');
       for (var trip in trips) {
         _log('  📍 ${trip.sourceAddress.placeAddress} → ${trip.destinationAddress.placeAddress}');
-        _log('     Seats: ${trip.availableSeats}, Price: €${trip.estimatedFare.toStringAsFixed(2)}');
+        _log('     Seats: ${trip.freeSeats}, Price: €${trip.estimatedFare.toStringAsFixed(2)}');
       }
     } catch (e, stack) {
       _log('❌ ERROR: $e');

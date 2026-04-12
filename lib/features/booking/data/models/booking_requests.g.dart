@@ -45,6 +45,7 @@ Map<String, dynamic> _$CancelTripRequestToJson(CancelTripRequest instance) =>
     <String, dynamic>{
       'userId': instance.userId,
       'tripId': instance.tripId,
-      'rideId': instance.rideId,
-      'cancellationReason': instance.cancellationReason,
+      if (instance.rideId case final value?) 'rideId': value,
+      if (instance.cancellationReason case final value?)
+        'cancellationReason': value,
     };

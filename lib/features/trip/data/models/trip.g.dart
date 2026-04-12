@@ -11,14 +11,12 @@ Trip _$TripFromJson(Map<String, dynamic> json) => Trip(
   tripStatus: json['tripStatus'] as String?,
   vehicleNumber: json['vehicleNumber'] as String?,
   driverId: json['driverId'] as String?,
-  sourceAddress: _parsePoints(json['sourceAddress'] ?? json['sourceLocation']),
-  destinationAddress: _parsePoints(json['destinationAddress'] ?? json['destinationLocation']),
+  sourceAddress: _parsePoints(json['sourceAddress']),
+  destinationAddress: _parsePoints(json['destinationAddress']),
   totalSeats: (json['totalSeats'] as num?)?.toInt() ?? 0,
   bookedSeats: (json['bookedSeats'] as num?)?.toInt() ?? 0,
-  availableSeats: (json['availableSeats'] as num?)?.toInt() ??
-      (((json['totalSeats'] as num?)?.toInt() ?? 0) -
-          ((json['bookedSeats'] as num?)?.toInt() ?? 0)),
-  tripStartDateTime: _parseDateTime(json['tripStartDateTimeUTC'] ?? json['departureTime']),
+  availableSeats: (json['availableSeats'] as num?)?.toInt() ?? 0,
+  tripStartDateTime: _parseDateTime(json['tripStartDateTimeUTC']),
   tripTimezone: json['tripTimezone'] as String?,
   routeGeometry: json['routeGeometry'] as Map<String, dynamic>?,
   routeDistance: (json['routeDistance'] as num?)?.toDouble(),

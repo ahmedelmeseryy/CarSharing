@@ -1,8 +1,8 @@
 import 'dart:async';
-import 'package:carsharing/services/places_service.dart';
+import 'package:carsharing/shared/services/places_service.dart';
 import 'package:flutter/material.dart';
-import 'package:carsharing/widgets/map_location_picker.dart';
-import 'package:carsharing/services/location_service.dart';
+import 'package:carsharing/shared/widgets/map_location_picker.dart';
+import 'package:carsharing/shared/services/location_service.dart';
 
 class AddressAutocompleteField extends StatefulWidget {
   final TextEditingController controller;
