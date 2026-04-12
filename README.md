@@ -322,6 +322,7 @@ All rights reserved. This project is for academic use and demonstration purposes
 ## 👥 Authors
 
 - Ahmed Elmesery - [GitHub](https://github.com/ahmedelmeseryy)
+- Sumeet Kumar - [GitHub](https://github.com/iamsumitk)
 
 ## 🙏 Acknowledgments
 

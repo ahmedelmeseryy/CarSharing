@@ -50,7 +50,7 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
       next.when(
         data: (response) {
           if (response != null) {
-            if (!response.tripCreated) {
+            if (response.tripId == null || response.tripId!.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(response.errorMessage ?? 'Failed to create trip'),
@@ -184,7 +184,9 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
                   prefixIcon: Icon(Icons.directions_car),
                 ),
                 items: _vehicles.map((v) {
-                  final label = '${v['text'] ?? ''} — ${v['value'] ?? ''}';
+                  final name = v['vehicleName'] ?? v['text'] ?? 'Unknown';
+                  final plate = v['vehicleNumber'] ?? v['value'] ?? '';
+                  final label = plate.isNotEmpty ? '$name — $plate' : name;
                   return DropdownMenuItem(value: v, child: Text(label, overflow: TextOverflow.ellipsis));
                 }).toList(),
                 onChanged: (v) => setState(() => _selectedVehicle = v),
@@ -399,8 +401,11 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
       _time!.minute,
     );
 
+    final vehicleNumber = (_selectedVehicle?['vehicleNumber'] ?? _selectedVehicle?['value'])?.toString();
+
     final request = OfferRideRequest(
       driverId: userId,
+      vehicleNumber: vehicleNumber,
       sourceAddress: Points(
         latitude: _fromLatitude!,
         longitude: _fromLongitude!,

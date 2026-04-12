@@ -3,12 +3,8 @@ import 'package:email_validator/email_validator.dart';
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/storage/secure_storage.dart';
-import 'dashboard_page.dart';
 import 'user_dashboard_page.dart';
 import 'driver_dashboard_page.dart';
-import 'ride_list_page.dart';
-import 'core/pages/api_debug_screen.dart';
-import 'rest_integration_tester.dart';
 import 'features/auth/data/services/auth_api_service.dart';
 import 'admin_dashboard_page.dart';
 import 'pages/auth/forgot_password_page.dart';
@@ -73,14 +69,10 @@ class MainApp extends StatelessWidget {
         '/': (context) => const WelcomePage(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignUpPage(),
-        '/dashboard': (context) => const DashboardPage(),
         '/user-dashboard': (context) => const UserDashboardPage(),
         '/driver-dashboard': (context) => const DriverDashboardPage(),
         '/admin-dashboard': (context) => const AdminDashboardPage(),
-        '/rides': (context) => const RideListPage(),
         '/profile': (context) => const ProfilePage(),
-        '/api-debug': (context) => const ApiDebugScreen(),
-        '/rest-integration': (context) => const RestIntegrationTester(),
       },
     );
   }

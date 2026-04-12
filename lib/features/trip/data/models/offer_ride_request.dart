@@ -36,11 +36,12 @@ class DateTimeConverter implements JsonConverter<DateTime, String> {
 }
 
 /// Request body for POST /api/trips/offer
-/// Maps from Swagger: OfferRideRequest
-/// Note: vehicleNumber is NOT sent — server resolves it from driverId
 @JsonSerializable(includeIfNull: false)
 class OfferRideRequest {
   final String driverId;
+
+  @JsonKey(name: 'vehicleNumber')
+  final String? vehicleNumber;
 
   @PointsConverter()
   final Points sourceAddress;
@@ -60,6 +61,7 @@ class OfferRideRequest {
 
   OfferRideRequest({
     required this.driverId,
+    this.vehicleNumber,
     required this.sourceAddress,
     required this.destinationAddress,
     required this.tripStartDateTime,

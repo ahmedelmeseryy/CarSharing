@@ -9,6 +9,7 @@ part of 'offer_ride_request.dart';
 OfferRideRequest _$OfferRideRequestFromJson(Map<String, dynamic> json) =>
     OfferRideRequest(
       driverId: json['driverId'] as String,
+      vehicleNumber: json['vehicleNumber'] as String?,
       sourceAddress: const PointsConverter().fromJson(
         json['sourceAddress'] as Map<String, dynamic>,
       ),
@@ -25,6 +26,7 @@ OfferRideRequest _$OfferRideRequestFromJson(Map<String, dynamic> json) =>
 Map<String, dynamic> _$OfferRideRequestToJson(OfferRideRequest instance) =>
     <String, dynamic>{
       'driverId': instance.driverId,
+      if (instance.vehicleNumber case final value?) 'vehicleNumber': value,
       'sourceAddress': const PointsConverter().toJson(instance.sourceAddress),
       'destinationAddress': const PointsConverter().toJson(
         instance.destinationAddress,
