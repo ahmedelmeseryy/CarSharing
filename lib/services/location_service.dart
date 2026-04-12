@@ -19,14 +19,12 @@ class LocationService {
       // Check if location service is enabled
       final serviceEnabled = await isLocationServiceEnabled();
       if (!serviceEnabled) {
-        print('Location services are disabled.');
         return null;
       }
 
       // Check and request permission
       final hasPermission = await requestLocationPermission();
       if (!hasPermission) {
-        print('Location permission denied.');
         return null;
       }
 
@@ -37,7 +35,6 @@ class LocationService {
 
       return position;
     } catch (e) {
-      print('Error getting current location: $e');
       return null;
     }
   }

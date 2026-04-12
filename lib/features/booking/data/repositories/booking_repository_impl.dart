@@ -12,14 +12,10 @@ class BookingRepositoryImpl implements IBookingRepository {
 
   @override
   Future<PassengerRideResponse> joinTrip(JoinTripRequest request) async {
-    print('📍 BOOKING REPO: joinTrip called with tripId: ${request.tripId}');
     final response = await _bookingApiService.joinTrip(request);
-    print('📍 BOOKING REPO: joinTrip API response: $response');
-    print('📍 BOOKING REPO: joinTrip response data: ${response.data}');
     if (response.data == null) {
       // Backend returns null data with success message when booking succeeds
       // Return a placeholder response so the UI knows it succeeded
-      print('✅ BOOKING REPO: joinTrip successful (null data), message: ${response.message}');
       return PassengerRideResponse(
         rideId: 'booking-${DateTime.now().millisecondsSinceEpoch}',
         tripId: request.tripId,
@@ -31,7 +27,6 @@ class BookingRepositoryImpl implements IBookingRepository {
         tripStartDateTime: request.rideStartTime,
       );
     }
-    print('✅ BOOKING REPO: joinTrip successful, booking rideId: ${response.data!.rideId}');
     return response.data!;
   }
 
@@ -55,27 +50,15 @@ class BookingRepositoryImpl implements IBookingRepository {
   Future<List<PassengerRideResponse>> getUpcomingBookingsForPassenger(
     String passengerId,
   ) async {
-    print('📍 BOOKING REPO: Requesting bookings for passengerId: $passengerId');
     try {
       final response = await _bookingApiService.getUpcomingBookingsForPassenger(passengerId);
-      print('📍 BOOKING REPO: Raw API response: $response');
-      print('📍 BOOKING REPO: Response type: ${response.runtimeType}');
-      print('📍 BOOKING REPO: Response data: ${response.data}');
-      print('📍 BOOKING REPO: Response data type: ${response.data?.runtimeType}');
-      print('📍 BOOKING REPO: Response data length: ${response.data?.length ?? 0}');
-      print('📍 BOOKING REPO: Response message: ${response.message}');
-      print('📍 BOOKING REPO: Response error: ${response.error}');
       
       final result = response.data ?? <PassengerRideResponse>[];
-      print('📍 BOOKING REPO: Returning ${result.length} bookings');
       return result;
     } catch (e, st) {
-      print('❌ BOOKING REPO: Exception: $e');
-      print('❌ BOOKING REPO: Stack: $st');
       
       // Handle 404 - endpoint not implemented on backend yet
       if (e.toString().contains('404') || e.toString().contains('NOT_FOUND')) {
-        print('⚠️ BOOKING REPO: Backend endpoint not available (404), returning empty list');
         return <PassengerRideResponse>[];
       }
       

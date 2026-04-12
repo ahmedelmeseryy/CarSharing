@@ -122,7 +122,6 @@ class _RideListPageState extends ConsumerState<RideListPage> {
       });
     } catch (e) {
       // ignore: avoid_print
-      print("Error loading rides from API: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error searching for trips: $e')),
       );
@@ -198,7 +197,6 @@ class _RideListPageState extends ConsumerState<RideListPage> {
       }
     } catch (e) {
       // ignore: avoid_print
-      print('[RIDE_LIST] Pickup distance search error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error searching by distance. Please try again.')),
       );
@@ -253,7 +251,6 @@ class _RideListPageState extends ConsumerState<RideListPage> {
       }
     } catch (e) {
       // ignore: avoid_print
-      print('[RIDE_LIST] Destination distance search error: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Error searching by distance. Please try again.')),
       );

@@ -40,9 +40,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
   @override
   void initState() {
     super.initState();
-    print('[INIT] AddressAutocompleteField initState');
     _focusNode.addListener(() {
-      print('[FOCUS] Focus changed: hasFocus=${_focusNode.hasFocus}');
       if (!_focusNode.hasFocus) {
         _hideSuggestions();
       }
@@ -62,7 +60,6 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
       _addressSelectedFromPredictions = false;
     });
 
-    print('[AUTOCOMPLETE] Text changed: "$value" (length: ${value.length})');
 
     // trigger suggestions earlier for shorter names (2+ chars)
     if (value.length < 2) {
@@ -74,17 +71,13 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
         _noResults = false;
       });
       _hideSuggestions();
-      print('[AUTOCOMPLETE] Text too short, cleared suggestions');
       return;
     }
 
     // Debounce rapid input
     _debounce?.cancel();
-    print('[AUTOCOMPLETE] Starting debounce timer for "$value"');
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      print('[AUTOCOMPLETE] Debounce timer fired, fetching predictions for "$value"');
       if (!mounted) {
-        print('[AUTOCOMPLETE] Widget unmounted, skipping');
         return;
       }
       setState(() {
@@ -93,11 +86,8 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
       });
 
       try {
-        print('[AUTOCOMPLETE] Calling PlacesService.getPlacePredictions("$value")');
         final predictions = await PlacesService.getPlacePredictions(value);
-        print('[AUTOCOMPLETE] Got ${predictions.length} predictions');
         if (!mounted) {
-          print('[AUTOCOMPLETE] Widget unmounted after API call, skipping setState');
           return;
         }
         setState(() {
@@ -106,12 +96,10 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
           _showSuggestions = predictions.isNotEmpty;
           _noResults = predictions.isEmpty;
         });
-        print('[AUTOCOMPLETE] State updated, showSuggestions=$_showSuggestions, noResults=$_noResults');
         if (_showSuggestions) {
           _showSuggestionsOverlay();
         }
       } catch (e) {
-        print('[AUTOCOMPLETE] ERROR fetching predictions: $e');
         if (!mounted) return;
         setState(() {
           _isLoading = false;
@@ -150,21 +138,17 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
   }
 
   void _showSuggestionsOverlay() {
-    print('[OVERLAY] _showSuggestionsOverlay called, showSuggestions=$_showSuggestions, predictions=${_predictions.length}');
     
     if (!_showSuggestions || _predictions.isEmpty) {
-      print('[OVERLAY] Skipping overlay (showSuggestions=$_showSuggestions, count=${_predictions.length})');
       return;
     }
 
-    print('[OVERLAY] Triggering rebuild to show suggestions');
     setState(() {
       _showSuggestions = true;
     });
   }
 
   void _hideSuggestions({bool force = false}) {
-    print('[OVERLAY] _hideSuggestions called');
     if (!mounted || force) {
       _showSuggestions = false;
       return;
@@ -176,8 +160,6 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
 
   @override
   Widget build(BuildContext context) {
-    print('[BUILD] AddressAutocompleteField.build() called');
-    print('[BUILD] Current state: predictions=${_predictions.length}, showSuggestions=$_showSuggestions, isLoading=$_isLoading');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -278,9 +260,7 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
           },
           onChanged: _onTextChanged,
           onTap: () {
-            print('[ONTAP] TextField tapped, predictions=${_predictions.length}, showSuggestions=$_showSuggestions');
             if (_predictions.isNotEmpty) {
-              print('[ONTAP] Showing overlay from onTap');
               _showSuggestionsOverlay();
             }
           },
@@ -309,7 +289,6 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
               itemCount: _predictions.length,
               itemBuilder: (context, index) {
                 final prediction = _predictions[index];
-                print('[SUGGESTION-TILE] Building tile $index for: ${prediction.mainText}');
                 return ListTile(
                   leading: const Icon(Icons.location_on, color: Colors.blue),
                   title: Text(
@@ -320,7 +299,6 @@ class _AddressAutocompleteFieldState extends State<AddressAutocompleteField> {
                   dense: true,
                   tileColor: index.isEven ? Colors.grey.shade100 : Colors.white,
                   onTap: () {
-                    print('[SUGGESTION-TAP] Selected: ${prediction.mainText}');
                     _onPredictionSelected(prediction);
                   },
                 );

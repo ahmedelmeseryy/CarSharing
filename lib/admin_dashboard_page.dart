@@ -808,17 +808,28 @@ class _UserDetailSheetState extends State<_UserDetailSheet> {
 
     setState(() => _deleting = true);
     try {
-      final service = UserApiService(DioClient());
+      final tripService = TripApiService(DioClient());
+      final userService = UserApiService(DioClient());
+
       if (widget.role == 'DRIVER') {
-        await service.adminDeleteDriver(userId);
+        // Delete all trips created by this driver first
+        final trips = await tripService.adminGetTripsByDriver(userId);
+        for (final trip in trips) {
+          final tripId = trip['tripId'] as String?;
+          if (tripId != null && tripId.isNotEmpty) {
+            await tripService.adminDeleteTrip(tripId);
+          }
+        }
+        await userService.adminDeleteDriver(userId);
       } else {
-        await service.adminDeletePassenger(userId);
+        await userService.adminDeletePassenger(userId);
       }
+
       if (mounted) {
         Navigator.pop(context);
         widget.onDeleted();
         ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('User deleted.'), backgroundColor: Colors.green));
+            const SnackBar(content: Text('User and their trips deleted.'), backgroundColor: Colors.green));
       }
     } catch (e) {
       if (mounted) {

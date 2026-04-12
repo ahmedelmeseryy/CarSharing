@@ -99,10 +99,16 @@ class DriverTripsPage extends ConsumerStatefulWidget {
 
 class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
   String? _userId;
+  bool _userIdLoaded = false;
 
   Future<void> _loadUserId() async {
     final id = await TokenStorage().getUserId();
-    if (mounted) setState(() => _userId = id);
+    if (mounted) {
+      setState(() {
+        _userId = id;
+        _userIdLoaded = true;
+      });
+    }
   }
 
   void _refresh() {
@@ -198,8 +204,28 @@ class _DriverTripsPageState extends ConsumerState<DriverTripsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_userId == null) {
+    if (!_userIdLoaded) {
       return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_userId == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Session expired. Please log in again.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () =>
+                  Navigator.pushReplacementNamed(context, '/login'),
+              child: const Text('Go to Login'),
+            ),
+          ],
+        ),
+      );
     }
 
     final tripsAsync = ref.watch(getUpcomingTripsForDriverProvider(_userId!));

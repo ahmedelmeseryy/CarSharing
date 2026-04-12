@@ -175,7 +175,6 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
             );
           }
 
-          print('🔍 DEBUG: Fetching bookings for userId: $userId');
 
           final bookingsAsync = ref.watch(
             getUpcomingBookingsForPassengerProvider(userId),
@@ -187,8 +186,6 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
           return bookingsAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (err, stack) {
-              print('❌ ERROR fetching bookings: $err');
-              print('📍 Stack: $stack');
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -218,7 +215,6 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
               final seen = <String>{};
               bookings = bookings.where((b) {
                 if (seen.contains(b.tripId)) {
-                  print('⚠️ DEBUG: Duplicate tripId found: ${b.tripId}, removing');
                   return false;
                 }
                 seen.add(b.tripId);
@@ -233,9 +229,7 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
               
               bookings = [...bookings, ...uniqueLocalBookings];
               
-              print('✅ DEBUG: Received ${bookings.length} bookings (${(data as List).length} from API, deduplicated to ${seen.length}, + ${uniqueLocalBookings.length} from cache)');
               if (bookings.isNotEmpty) {
-                print('📌 First booking tripId: ${bookings[0].tripId}');
               }
 
               if (bookings.isEmpty) {

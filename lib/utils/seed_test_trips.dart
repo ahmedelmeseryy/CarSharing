@@ -10,7 +10,6 @@ class SeedTestTrips {
     final userId = await TokenStorage().getUserId();
     if (userId == null || userId.isEmpty) {
       // ignore: avoid_print
-      print('User must be logged in to add test trips');
       return;
     }
 
@@ -62,11 +61,9 @@ class SeedTestTrips {
         successCount++;
       } catch (e) {
         // ignore: avoid_print
-        print('❌ Error adding test trip: $e');
       }
     }
     // ignore: avoid_print
-    print('✅ Successfully added $successCount test trips');
   }
 
   static OfferRideRequest _makeRequest(

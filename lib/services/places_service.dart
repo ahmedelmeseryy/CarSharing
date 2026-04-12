@@ -77,24 +77,19 @@ class PlacesService {
     // Return cached results if fresh
     final cached = _cache[key];
     if (cached != null && DateTime.now().isBefore(cached.expiry)) {
-      print('[NOMINATIM CACHE] Cache hit for "$key" - ${cached.predictions.length} results');
       return cached.predictions;
     }
 
     // If we have a stale cache entry (expired), return it immediately to
     // improve UX when the network is flaky, and refresh in background.
     if (cached != null) {
-      print('[NOMINATIM CACHE] Returning stale cache for "$key" (${cached.predictions.length} results) and refreshing in background');
       // Fire-and-forget refresh
       _fetchPredictions(key).then((results) {
         if (results.isNotEmpty) {
           _cache[key] = _CacheEntry(predictions: results, expiry: DateTime.now().add(_cacheTtl));
-          print('[NOMINATIM CACHE] Background refresh updated cache for "$key" with ${results.length} results');
         } else {
-          print('[NOMINATIM CACHE] Background refresh returned no results for "$key"');
         }
       }).catchError((e) {
-        print('[NOMINATIM CACHE] Background refresh error for "$key": $e');
       });
 
       return cached.predictions;
@@ -102,7 +97,6 @@ class PlacesService {
 
     // If a request for this key is already ongoing, return its Future (coalesce)
     if (_ongoingRequests.containsKey(key)) {
-      print('[NOMINATIM REQUEST] Request already in progress for "$key", coalescing...');
       try {
         return await _ongoingRequests[key]!;
       } catch (_) {
@@ -110,13 +104,11 @@ class PlacesService {
       }
     }
 
-    print('[NOMINATIM REQUEST] Starting new request for "$key"');
     
     // Create the request future and store it while running
     final future = _fetchPredictions(key).then((results) {
       // Cache and return results, or fallback to local suggestions
       if (results.isNotEmpty) {
-        print('[NOMINATIM CACHE] Caching ${results.length} results for "$key" (expires in ${_cacheTtl.inSeconds}s)');
         _cache[key] = _CacheEntry(
           predictions: results,
           expiry: DateTime.now().add(_cacheTtl),
@@ -125,10 +117,8 @@ class PlacesService {
         return results;
       } else {
         // Try local fallback when Nominatim returns no results
-        print('[NOMINATIM] No results from Nominatim, trying local fallback for "$key"');
         final fallbackResults = _localFallback(input);
         if (fallbackResults.isNotEmpty) {
-          print('[NOMINATIM CACHE] Caching ${fallbackResults.length} fallback results for "$key"');
           _cache[key] = _CacheEntry(
             predictions: fallbackResults,
             expiry: DateTime.now().add(_cacheTtl),
@@ -138,11 +128,9 @@ class PlacesService {
         return fallbackResults;
       }
     }).catchError((e) {
-      print('[NOMINATIM REQUEST] Request failed for "$key": $e, trying local fallback');
       // On any error, try local fallback
       final fallbackResults = _localFallback(input);
       if (fallbackResults.isNotEmpty) {
-        print('[NOMINATIM CACHE] Caching ${fallbackResults.length} fallback results for "$key" (error recovery)');
         _cache[key] = _CacheEntry(
           predictions: fallbackResults,
           expiry: DateTime.now().add(_cacheTtl),
@@ -169,8 +157,6 @@ class PlacesService {
       'countrycodes': 'de', // Restrict to Germany
       });
 
-      print('[NOMINATIM] Fetching predictions for "$input"');
-      print('[NOMINATIM] Request URI: $uri');
       // Implement a small retry/backoff for transient failures (rate limits,
       // server errors, connection resets). Keep retries small to avoid
       // hammering the public Nominatim service.
@@ -186,22 +172,15 @@ class PlacesService {
           })
               .timeout(const Duration(seconds: 5));
 
-          print('[NOMINATIM] Response status: ${response.statusCode} (attempt $attempt)');
-          print('[NOMINATIM] Response body length: ${response.body.length}');
           if (response.body.length < 1000) {
-            print('[NOMINATIM] Response body: ${response.body}');
           } else {
-            print('[NOMINATIM] Response (first 500 chars): ${response.body.substring(0, 500)}');
           }
 
           if (response.statusCode == 200) {
             final List<dynamic> data = json.decode(response.body);
-            print('[NOMINATIM] Successfully parsed JSON: ${data.length} results');
             if (data.isNotEmpty) {
-              print('[NOMINATIM] First result keys: ${data[0].toString().substring(0, 200)}');
             }
             final predictions = data.map((p) => PlacePrediction.fromJson(p)).toList();
-            print('[NOMINATIM] Converted to ${predictions.length} predictions');
             return predictions;
           }
 
@@ -209,29 +188,23 @@ class PlacesService {
           if (response.statusCode == 429 || response.statusCode == 418 || response.statusCode >= 500) {
             if (attempt < maxAttempts) {
               final backoff = Duration(milliseconds: 300 * attempt);
-              print('[NOMINATIM] Transient status ${response.statusCode}, retrying after ${backoff.inMilliseconds}ms');
               await Future.delayed(backoff);
               continue;
             } else {
-              print('[NOMINATIM] Giving up after $attempt attempts (status ${response.statusCode})');
             }
           } else {
-            print('[NOMINATIM] Non-retriable status ${response.statusCode}');
           }
         } on SocketException catch (se) {
-          print('[NOMINATIM] SocketException: $se (attempt $attempt)');
           if (attempt < maxAttempts) {
             await Future.delayed(Duration(milliseconds: 300 * attempt));
             continue;
           }
         } on TimeoutException catch (te) {
-          print('[NOMINATIM] Timeout: $te (attempt $attempt)');
           if (attempt < maxAttempts) {
             await Future.delayed(Duration(milliseconds: 300 * attempt));
             continue;
           }
         } catch (e) {
-          print('[NOMINATIM] EXCEPTION: $e (attempt $attempt)');
           if (attempt < maxAttempts) {
             await Future.delayed(Duration(milliseconds: 300 * attempt));
             continue;
@@ -241,7 +214,6 @@ class PlacesService {
         break;
       }
     } catch (e) {
-      print('[NOMINATIM] EXCEPTION: $e');
     }
 
     return [];
@@ -280,7 +252,6 @@ class PlacesService {
     });
 
     if (results.isNotEmpty) {
-      print('[NOMINATIM FALLBACK] Returning ${results.length} local fallback results for "$input"');
     }
     return results;
   }
@@ -297,7 +268,6 @@ class PlacesService {
       // This is handled in the address-based approach below
       return null;
     } catch (e) {
-      print('Error fetching place details: $e');
     }
 
     return null;
@@ -318,7 +288,6 @@ class PlacesService {
       'countrycodes': 'de', // Restrict to Germany
       });
 
-      print('[GEOCODE] Geocoding address: "$address"');
       final response = await http.get(uri, headers: {
         'User-Agent': 'CarSharing/1.0 (dev@local)',
         'Accept-Language': 'en',
@@ -333,23 +302,17 @@ class PlacesService {
             longitude: double.parse(result['lon'].toString()),
             address: result['display_name'] ?? address,
           );
-          print('[GEOCODE] Successfully geocoded: lat=${location.latitude}, lon=${location.longitude}');
           return location;
         } else {
-          print('[GEOCODE] No results from Nominatim for "$address"');
         }
       } else {
-        print('[GEOCODE] API returned status ${response.statusCode}');
       }
     } catch (e) {
-      print('[GEOCODE] Error geocoding address: $e');
     }
 
     // Fallback: try to geocode local city names
-    print('[GEOCODE] Geocoding failed, trying local fallback for "$address"');
     final fallbackLocation = _geocodeLocalCities(address);
     if (fallbackLocation != null) {
-      print('[GEOCODE] Using fallback location: lat=${fallbackLocation.latitude}, lon=${fallbackLocation.longitude}');
       return fallbackLocation;
     }
 
@@ -407,7 +370,6 @@ class PlacesService {
         return data['display_name'] ?? null;
       }
     } catch (e) {
-      print('Error reverse geocoding: $e');
     }
 
     return null;

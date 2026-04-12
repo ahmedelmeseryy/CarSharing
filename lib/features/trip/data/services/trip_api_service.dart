@@ -9,46 +9,30 @@ import 'package:carsharing/features/trip/data/models/trip.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
 
-/// Trip API Service
-/// Handles all trip-related endpoints: offer, cancel, search, list upcoming
 class TripApiService {
   final DioClient _dioClient;
 
   TripApiService(this._dioClient);
 
-  /// POST /api/trips/offer
-  /// Create a new trip offering
-  /// 
-  /// Parameters:
-  /// - request: OfferRideRequest with driver info, vehicle, source/destination, available seats
-  /// 
-  /// Returns: ApiResponse with OfferRideResponse
-  /// Throws: ApiException on network/auth/server errors
+  // POST /trip-service/api/trips/offer — driver creates a new trip
   Future<ApiResponse<OfferRideResponse>> offerTrip(
     OfferRideRequest request,
   ) async {
     try {
       final jsonData = request.toJson();
-      print('🚗 DEBUG: Offer Trip Request JSON:');
-      print(jsonData);
       
       final response = await _dioClient.post<ApiResponse<OfferRideResponse>>(
         '/trip-service/api/trips/offer',
         data: jsonData,
         fromJson: (json) {
-          print('🚗 DEBUG: Offer Trip Response JSON:');
-          print(json);
           
           if (json is Map<String, dynamic>) {
             final result = ApiResponse<OfferRideResponse>.fromJson(
               json,
               (data) {
-                print('🚗 DEBUG: Parsing OfferRideResponse from:');
-                print(data);
                 return OfferRideResponse.fromJson(data as Map<String, dynamic>);
               },
             );
-            print('🚗 DEBUG: Trip created with ID: ${result.data?.tripId}');
             return result;
           }
           return ApiResponse<OfferRideResponse>(
@@ -57,23 +41,14 @@ class TripApiService {
         },
       );
       
-      print('🚗 DEBUG: Successfully created trip!');
       return response;
     } catch (e) {
-      print('🚗 DEBUG: Error creating trip: $e');
       rethrow;
     }
   }
 
-  /// POST /api/trips/cancel
-  /// Cancel an existing trip (driver-initiated)
-  /// 
-  /// Parameters:
-  /// - request: CancelTripRequest with userId, tripId, rideId, optional reason
-  /// 
-  /// Returns: ApiResponse with success message/status
-  /// Throws: ApiException on network/auth/server errors or if error object is present in response
-  /// Note: This endpoint returns HTTP 200 even for logical errors, so we check response.error
+  // POST /trip-service/api/trips/cancel — driver cancels their trip
+  // Returns HTTP 200 even on business errors; checks response.error manually
   Future<ApiResponse<String>> cancelTrip(
     CancelTripRequest request,
   ) async {
@@ -107,44 +82,23 @@ class TripApiService {
     }
   }
 
-  /// GET /api/trips/upcoming/driver/{driverId}
-  /// Get all upcoming trips for a driver
-  /// 
-  /// Parameters:
-  /// - driverId: UUID of the driver
-  /// 
-  /// Returns: ApiResponse with List<DriverTripResponse>
-  /// Throws: ApiException on network/auth/server errors
-  /// GET /api/trips/active/driver/{driverId}
-  /// Get all active trips offered by a driver
-  /// 
-  /// Parameters:
-  /// - driverId: The driver's user ID
-  /// 
-  /// Returns: ApiResponse with List<DriverTripResponse> with trip details and passenger info
-  /// Throws: ApiException on network/auth/server errors
+  // GET /trip-service/api/trips/active/driver/{driverId}
   Future<ApiResponse<List<DriverTripResponse>>> getUpcomingTripsForDriver(
     String driverId,
   ) async {
     try {
-      print('🚗 DRIVER_TRIPS: driverId="$driverId" (empty=${driverId.isEmpty})');
-      print('🚗 DRIVER_TRIPS: calling GET /trip-service/api/trips/active/driver/$driverId');
 
       final response = await _dioClient.get<ApiResponse<List<DriverTripResponse>>>(
         '/trip-service/api/trips/active/driver/$driverId',
         fromJson: (json) {
-          print('🚗 DRIVER_TRIPS: raw json type=${json.runtimeType}');
-          print('🚗 DRIVER_TRIPS: raw json=$json');
           
           if (json is Map<String, dynamic>) {
             final result = ApiResponse<List<DriverTripResponse>>.fromJson(
               json,
               (data) {
                 if (data is List) {
-                  print('🚗 DEBUG: Found ${data.length} trips for driver');
                   return data
                       .map((item) {
-                        print('🚗 DEBUG: Trip: $item');
                         return DriverTripResponse.fromJson(
                             item as Map<String, dynamic>);
                       })
@@ -170,13 +124,11 @@ class TripApiService {
       
       return response;
     } catch (e) {
-      print('🚗 DRIVER_TRIPS: EXCEPTION type=${e.runtimeType} message=$e');
       rethrow;
     }
   }
 
-  /// GET /api/trips/{tripId}
-  /// Get full trip details including bookings/passengers
+  // GET /trip-service/api/trips/{tripId} — returns trip metadata (no passenger list)
   Future<Map<String, dynamic>?> getTripById(String tripId) async {
     try {
       final response = await _dioClient.get<dynamic>(
@@ -187,21 +139,11 @@ class TripApiService {
       }
       return null;
     } catch (e) {
-      print('⚠️ getTripById failed: $e');
       return null;
     }
   }
 
-  /// GET /api/trips/search/near-source
-  /// Search for trips near a source location
-  /// 
-  /// Parameters:
-  /// - sourceLat: Latitude of source
-  /// - sourceLon: Longitude of source
-  /// - radiusKm: Search radius in kilometers (optional, default typically 5)
-  /// 
-  /// Returns: ApiResponse with List<Trip> matching the source location
-  /// Throws: ApiException on network/auth/server errors
+  // GET /trip-service/api/trips/search/near-source
   Future<ApiResponse<List<Trip>>> searchNearSource({
     required double sourceLat,
     required double sourceLon,
@@ -218,7 +160,6 @@ class TripApiService {
         '/trip-service/api/trips/search/near-source',
         queryParameters: queryParams,
         fromJson: (json) {
-          // Backend should return ApiResponseListTrip with data field
           if (json is Map<String, dynamic>) {
             return ApiResponse<List<Trip>>.fromJson(
               json,
@@ -232,8 +173,7 @@ class TripApiService {
               },
             );
           }
-          
-          // Fallback: direct array (legacy)
+
           if (json is List) {
             final trips = json
                 .map((item) => Trip.fromJson(item as Map<String, dynamic>))
@@ -249,16 +189,7 @@ class TripApiService {
     }
   }
 
-  /// GET /api/trips/search/near-destination
-  /// Search for trips near a destination location
-  /// 
-  /// Parameters:
-  /// - destLat: Latitude of destination
-  /// - destLon: Longitude of destination
-  /// - radiusKm: Search radius in kilometers (optional)
-  /// 
-  /// Returns: ApiResponse with List<Trip> matching the destination location
-  /// Throws: ApiException on network/auth/server errors
+  // GET /trip-service/api/trips/search/near-destination
   Future<ApiResponse<List<Trip>>> searchNearDestination({
     required double destLat,
     required double destLon,
@@ -275,7 +206,6 @@ class TripApiService {
         '/trip-service/api/trips/search/near-destination',
         queryParameters: queryParams,
         fromJson: (json) {
-          // Backend should return ApiResponseListTrip with data field
           if (json is Map<String, dynamic>) {
             return ApiResponse<List<Trip>>.fromJson(
               json,
@@ -289,8 +219,7 @@ class TripApiService {
               },
             );
           }
-          
-          // Fallback: direct array (legacy)
+
           if (json is List) {
             final trips = json
                 .map((item) => Trip.fromJson(item as Map<String, dynamic>))
@@ -306,36 +235,8 @@ class TripApiService {
     }
   }
 
-  /// GET /api/trips/search/matching-route
-  /// Find trips that match both source and destination within radius
-  /// This is the most powerful search - finds trips matching the entire route
-  /// 
-  /// Parameters:
-  /// - sourceLat, sourceLon: Passenger's starting point
-  /// - sourceRadiusKm: Acceptable radius around source (km)
-  /// - destLat, destLon: Passenger's destination
-  /// - destRadiusKm: Acceptable radius around destination (km)
-  /// - rideStartTime: Preferred start time (ISO format, optional)
-  /// - requestedSeats: Number of seats needed (optional)
-  /// - effectiveUserId: Passenger ID to exclude own trips (optional)
-  /// 
-  /// Returns: ApiResponse with List<Trip> with compatible routes
-  /// Throws: ApiException on network/auth/server errors
-  /// 
-  /// Example:
-  /// ```dart
-  /// final trips = await tripService.searchMatchingRoute(
-  ///   sourceLat: 48.8566,
-  ///   sourceLon: 2.3522,
-  ///   sourceRadiusKm: 2,
-  ///   destLat: 48.8606,
-  ///   destLon: 2.2945,
-  ///   destRadiusKm: 2,
-  ///   rideStartTime: '2024-01-15T10:00:00Z',
-  ///   requestedSeats: 2,
-  ///   effectiveUserId: currentUserId,
-  /// );
-  /// ```
+  // GET /trip-service/api/trips/search/matching-route — finds trips matching both source and destination
+  // Falls back to two-stage search if endpoint fails (see WORKAROUND below)
   Future<ApiResponse<List<Trip>>> searchMatchingRoute({
     required double sourceLat,
     required double sourceLon,
@@ -345,11 +246,9 @@ class TripApiService {
     required double destRadiusKm,
     required String rideStartTime,
     required int requestedSeats,
-    required String effectiveUserId,
+    required String effectiveUserId, // passenger's own ID — excludes their trips from results
   }) async {
     try {
-      // Backend expects these exact parameter names (from OpenAPI spec)
-      // Send numbers as actual numbers, not strings
       final queryParams = {
         'sourceLatitude': sourceLat,
         'sourceLongitude': sourceLon,
@@ -362,19 +261,10 @@ class TripApiService {
         'effectiveUserId': effectiveUserId,
       };
 
-      print('🔍 DEBUG: Search Matching Route Request:');
-      print('Source: ($sourceLat, $sourceLon) radius: $sourceRadiusKm km');
-      print('Destination: ($destLat, $destLon) radius: $destRadiusKm km');
-      print('Time: $rideStartTime, Seats: $requestedSeats, User: $effectiveUserId');
-
       return await _dioClient.get<ApiResponse<List<Trip>>>(
         '/trip-service/api/trips/search/matching-route',
         queryParameters: queryParams,
         fromJson: (json) {
-          print('🔍 DEBUG: Search Response JSON:');
-          print(json);
-          
-          // Backend should return ApiResponseListTrip with data field
           if (json is Map<String, dynamic>) {
             final response = ApiResponse<List<Trip>>.fromJson(
               json,
@@ -383,34 +273,27 @@ class TripApiService {
                   final trips = data
                       .map((item) => Trip.fromJson(item as Map<String, dynamic>))
                       .toList();
-                  print('🔍 DEBUG: Parsed ${trips.length} trips from response');
                   return trips;
                 }
-                print('🔍 DEBUG: Data is not a list, returning empty');
                 return <Trip>[];
               },
             );
-            print('🔍 DEBUG: Final response has ${response.data?.length ?? 0} trips');
             return response;
           }
-          
-          // Fallback: direct array (legacy)
+
           if (json is List) {
-            print('🔍 DEBUG: Response is direct array with ${json.length} items');
             final trips = json
                 .map((item) => Trip.fromJson(item as Map<String, dynamic>))
                 .toList();
             return ApiResponse<List<Trip>>(data: trips);
           }
 
-          print('🔍 DEBUG: Unrecognized response format, returning empty');
           return ApiResponse<List<Trip>>(data: const []);
         },
       );
     } catch (e) {
       // WORKAROUND: Backend /matching-route has internal server error (Issue #4)
       // Fall back to two-stage search using working endpoints
-      print('⚠️ matching-route failed, using fallback search: $e');
       return await _searchMatchingRouteFallback(
         sourceLat: sourceLat,
         sourceLon: sourceLon,
@@ -423,8 +306,7 @@ class TripApiService {
     }
   }
 
-  /// Fallback search method when /matching-route endpoint fails
-  /// Uses two-stage search: near-source + client-side destination filtering
+  // Fallback: fetch trips near source, then filter client-side by destination radius and seat count
   Future<ApiResponse<List<Trip>>> _searchMatchingRouteFallback({
     required double sourceLat,
     required double sourceLon,
@@ -435,7 +317,6 @@ class TripApiService {
     required int requestedSeats,
   }) async {
     try {
-      // Stage 1: Get trips near source
       final sourceResults = await searchNearSource(
         sourceLat: sourceLat,
         sourceLon: sourceLon,
@@ -448,33 +329,23 @@ class TripApiService {
         return ApiResponse<List<Trip>>(data: const []);
       }
 
-      // Stage 2: Filter by destination proximity and available seats
       final matchingTrips = sourceTrips.where((trip) {
-        // Check destination proximity
         final destDistance = _calculateDistance(
           destLat,
           destLon,
           trip.destinationAddress.latitude,
           trip.destinationAddress.longitude,
         );
-        
-        final withinDestRadius = destDistance <= destRadiusKm;
-        
-        // Check available seats
-        final hasEnoughSeats = trip.availableSeats >= requestedSeats;
-        
-        return withinDestRadius && hasEnoughSeats;
+        return destDistance <= destRadiusKm && trip.availableSeats >= requestedSeats;
       }).toList();
 
-      print('🔍 Fallback search: ${sourceTrips.length} near source → ${matchingTrips.length} matching route');
-      
       return ApiResponse<List<Trip>>(data: matchingTrips);
     } catch (e) {
       rethrow;
     }
   }
 
-  /// Calculate distance between two coordinates in kilometers using Haversine formula
+  // Haversine formula — returns distance in km
   double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
     const earthRadiusKm = 6371.0;
     
@@ -496,12 +367,9 @@ class TripApiService {
     return degrees * pi / 180;
   }
 
-  // ─── Admin endpoints ──────────────────────────────────────────────────────
+  static const _adminHeaders = {'X-User-Role': 'ADMIN'}; // required for all /admin/* endpoints
 
-  static const _adminHeaders = {'X-User-Role': 'ADMIN'};
-
-  /// GET /trip-service/api/admin/trips/upcoming
-  /// Returns paginated upcoming trips for admin overview.
+  // GET /trip-service/api/admin/trips/upcoming — paginated
   Future<Map<String, dynamic>> adminListUpcomingTrips({
     int page = 0,
     int size = 20,
@@ -514,14 +382,12 @@ class TripApiService {
     if (response is Map<String, dynamic>) {
       final data = response['data'];
       if (data is Map<String, dynamic>) return data;
-      // some endpoints return a plain list under data
       if (data is List) return {'content': data, 'totalElements': data.length, 'totalPages': 1};
     }
     return {'content': [], 'totalElements': 0, 'totalPages': 0};
   }
 
-  /// GET /trip-service/api/admin/trips
-  /// Returns paginated all trips for admin overview.
+  // GET /trip-service/api/admin/trips — paginated
   Future<Map<String, dynamic>> adminListAllTrips({
     int page = 0,
     int size = 20,
@@ -539,8 +405,7 @@ class TripApiService {
     return {'content': [], 'totalElements': 0, 'totalPages': 0};
   }
 
-  /// GET /trip-service/api/admin/trips/{id}
-  /// Returns full trip detail for admin.
+  // GET /trip-service/api/admin/trips/{tripId} — full trip detail including bookings
   Future<Map<String, dynamic>?> adminGetTrip(String tripId) async {
     try {
       final response = await _dioClient.get<dynamic>(
@@ -557,7 +422,68 @@ class TripApiService {
     }
   }
 
-  /// GET /trip-service/api/admin/bookings — load all, filter by tripId client-side
+  // Returns all trips for a driver; tries driver-specific endpoint first, falls back to filtering all trips
+  Future<List<Map<String, dynamic>>> adminGetTripsByDriver(String driverId) async {
+    try {
+      for (final path in [
+        '/trip-service/api/admin/trips/driver/$driverId',
+        '/trip-service/api/trips/active/driver/$driverId',
+      ]) {
+        try {
+          final r = await _dioClient.get<dynamic>(path, headers: _adminHeaders);
+          final list = _extractAdminList(r);
+          if (list.isNotEmpty) return list;
+        } catch (_) {}
+      }
+      // Fallback: fetch all and filter
+      final response = await _dioClient.get<dynamic>(
+        '/trip-service/api/admin/trips',
+        queryParameters: {'page': 0, 'size': 500},
+        headers: _adminHeaders,
+      );
+      return _extractAdminList(response)
+          .where((t) =>
+              (t['driverId'] ?? t['driver_id']) == driverId)
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // DELETE /trip-service/api/admin/trips/{tripId} — falls back to cancel endpoint if delete fails
+  Future<void> adminDeleteTrip(String tripId) async {
+    try {
+      await _dioClient.delete<dynamic>(
+        '/trip-service/api/admin/trips/$tripId',
+        headers: _adminHeaders,
+      );
+    } catch (_) {
+      try {
+        await _dioClient.post<dynamic>(
+          '/trip-service/api/admin/trips/$tripId/cancel',
+          headers: _adminHeaders,
+        );
+      } catch (_) {}
+    }
+  }
+
+  List<Map<String, dynamic>> _extractAdminList(dynamic response) {
+    List<dynamic> raw = [];
+    if (response is List) {
+      raw = response;
+    } else if (response is Map<String, dynamic>) {
+      final data = response['data'];
+      if (data is List) {
+        raw = data;
+      } else if (data is Map<String, dynamic>) {
+        final content = data['content'];
+        if (content is List) raw = content;
+      }
+    }
+    return raw.whereType<Map<String, dynamic>>().toList();
+  }
+
+  // GET /trip-service/api/admin/bookings — loads all bookings and filters by tripId client-side
   Future<List<Map<String, dynamic>>> adminGetBookingsForTrip(String tripId) async {
     try {
       final response = await _dioClient.get<dynamic>(

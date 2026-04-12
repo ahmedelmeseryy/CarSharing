@@ -64,12 +64,10 @@ class DioClient {
         onError: (DioException error, ErrorInterceptorHandler handler) async {
           _logger.e('🔴 [ERROR] ${error.response?.statusCode} ${error.message}');
           
-          // Handle 401: Token expired
+          // Handle 401: Token expired — only clear auth tokens, keep userId
           if (error.response?.statusCode == 401) {
-            _logger.w('⚠️  Unauthorized (401). Clearing tokens.');
-            await _tokenStorage.clearAll();
-            // You might want to emit an event to navigate to login
-            // or refresh the token here
+            _logger.w('⚠️  Unauthorized (401). Clearing auth tokens.');
+            await _tokenStorage.clearAuthTokens();
           }
           
           return handler.next(error);
@@ -171,17 +169,11 @@ class DioClient {
 
   /// Handle successful response
   T _handleResponse<T>(Response response, T Function(dynamic json)? fromJson) {
-    print('🌐 DIO_CLIENT: Response status: ${response.statusCode}');
-    print('🌐 DIO_CLIENT: Response data type: ${response.data.runtimeType}');
-    print('🌐 DIO_CLIENT: Raw response.data: ${response.data}');
     
     if (fromJson != null) {
-      print('🌐 DIO_CLIENT: Calling fromJson with data');
       final result = fromJson(response.data);
-      print('🌐 DIO_CLIENT: fromJson returned: $result');
       return result;
     }
-    print('🌐 DIO_CLIENT: No fromJson, returning response.data as T');
     return response.data as T;
   }
 

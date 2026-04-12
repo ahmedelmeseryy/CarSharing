@@ -292,19 +292,15 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
       
       // Call the booking
       await notifier.joinTrip(request);
-      print('✅ PAYMENT: Booking notifier call completed');
       
       // Wait a brief moment for state to update
       await Future.delayed(const Duration(milliseconds: 100));
       
       // Now read the final state
       final state = ref.read(joinTripProvider);
-      print('✅ PAYMENT: Final state after delay: $state');
-      print('✅ PAYMENT: State hasValue: ${state.hasValue}, State.hasError: ${state.hasError}');
       
       // Handle the state
       if (state.hasError) {
-        print('❌ PAYMENT: State has error: ${state.error}');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -322,7 +318,6 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
       }
       
       if (!state.hasValue || state.value == null) {
-        print('⚠️ PAYMENT: State has no value');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -341,7 +336,6 @@ class _PaymentMethodPageState extends ConsumerState<PaymentMethodPage> {
       
       // Success case
       final booking = state.value!;
-      print('✅ PAYMENT: Booking successful, rideId: ${booking.rideId}');
       
       if (!mounted) return;
       

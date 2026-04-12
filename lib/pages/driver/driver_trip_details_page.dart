@@ -27,23 +27,37 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
   }
 
   Future<void> _fetchPassengers() async {
+    // Use passengers already present on the DriverTripResponse first
+    final existing = widget.trip.passengers;
+    if (existing != null && existing.isNotEmpty) {
+      setState(() {
+        _passengers = existing;
+        _loadingPassengers = false;
+      });
+      return;
+    }
+
     final tripId = widget.trip.tripId;
-    if (tripId == null || tripId.isEmpty) {
+    final driverId = widget.trip.driverId;
+    if (tripId == null || tripId.isEmpty || driverId == null || driverId.isEmpty) {
       setState(() => _loadingPassengers = false);
       return;
     }
+
     try {
-      final service = TripApiService(DioClient());
-      final data = await service.getTripById(tripId);
-      if (data != null) {
-        final raw = data['passengers'];
-        setState(() {
-          _passengers = raw is List ? raw : [];
-          _loadingPassengers = false;
-        });
-      } else {
-        setState(() => _loadingPassengers = false);
+      final raw = await TripApiService(DioClient()).getTripById(tripId);
+      List<dynamic> found = [];
+      if (raw != null) {
+        final p = raw['passengers'] ??
+            raw['bookings'] ??
+            raw['rides'] ??
+            raw['passengerList'];
+        if (p is List) found = p;
       }
+      setState(() {
+        _passengers = found;
+        _loadingPassengers = false;
+      });
     } catch (_) {
       setState(() => _loadingPassengers = false);
     }
@@ -219,6 +233,10 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
 
   _PassengerDisplayData _normalizePassenger(dynamic passenger) {
     if (passenger is Map<String, dynamic>) {
+      final id = (passenger['passengerId'] ??
+              passenger['userId'] ??
+              passenger['id'])
+          ?.toString();
       final name = (passenger['name'] ??
               passenger['fullName'] ??
               passenger['passengerName'] ??
@@ -226,14 +244,21 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
           ?.toString();
       final email = passenger['email']?.toString();
       final phone = (passenger['phone'] ?? passenger['phoneNumber'])?.toString();
-      final seats = (passenger['bookedSeats'] ?? passenger['seats'] ?? passenger['requestedSeats'])?.toString();
-      final id = (passenger['passengerId'] ?? passenger['userId'] ?? passenger['id'])?.toString();
+      final seats = (passenger['requestedSeats'] ??
+              passenger['bookedSeats'] ??
+              passenger['seats'])
+          ?.toString();
+      final status = (passenger['status'] ??
+              passenger['bookingStatus'] ??
+              passenger['rideStatus'])
+          ?.toString();
 
       return _PassengerDisplayData(
         name: name?.isNotEmpty == true ? name! : (id ?? 'Passenger'),
         email: email,
         phone: phone,
         seats: seats,
+        status: status,
         id: id,
       );
     }
@@ -249,6 +274,7 @@ class _DriverTripDetailsPageState extends State<DriverTripDetailsPage> {
     if (data.email != null && data.email!.isNotEmpty) details.add(data.email!);
     if (data.phone != null && data.phone!.isNotEmpty) details.add(data.phone!);
     if (data.seats != null && data.seats!.isNotEmpty) details.add('Seats: ${data.seats}');
+    if (data.status != null && data.status!.isNotEmpty) details.add(data.status!);
     if (details.isEmpty && data.id != null && data.id!.isNotEmpty) details.add('ID: ${data.id}');
     if (details.isEmpty) return null;
     return Text(details.join(' • '));
@@ -274,6 +300,7 @@ class _PassengerDisplayData {
   final String? email;
   final String? phone;
   final String? seats;
+  final String? status;
   final String? id;
 
   const _PassengerDisplayData({
@@ -281,6 +308,7 @@ class _PassengerDisplayData {
     this.email,
     this.phone,
     this.seats,
+    this.status,
     this.id,
   });
 }

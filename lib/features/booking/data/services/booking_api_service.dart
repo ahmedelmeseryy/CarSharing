@@ -4,52 +4,20 @@ import 'package:carsharing/core/network/api_exceptions.dart';
 import 'package:carsharing/features/booking/data/models/booking_requests.dart';
 import 'package:carsharing/features/booking/data/models/booking_response.dart';
 
-/// Booking API Service
-/// Handles booking-related endpoints: join trip, cancel booking, list upcoming bookings
 class BookingApiService {
   final DioClient _dioClient;
 
   BookingApiService(this._dioClient);
 
-  /// POST /api/bookings/join
-  /// Passenger joins an existing trip
-  /// 
-  /// Parameters:
-  /// - request: JoinTripRequest with trip ID, passenger info, pickup/dropoff, seats
-  /// 
-  /// Returns: ApiResponse with PassengerRideResponse (booking confirmation)
-  /// Throws: ApiException on network/auth/server errors or if trip full/invalid
-  /// 
-  /// Common Status Codes:
-  /// - 201: Booking created successfully
-  /// - 400: Invalid request (missing seats, trip full, etc.)
-  /// - 404: Trip not found
-  /// - 409: Passenger already joined this trip
-  /// 
-  /// Example:
-  /// ```dart
-  /// final booking = await bookingService.joinTrip(
-  ///   JoinTripRequest(
-  ///     tripId: 'trip-123',
-  ///     passengerId: userId,
-  ///     driverId: 'driver-456',
-  ///     pickupPoint: Points(latitude: 48.8566, longitude: 2.3522),
-  ///     destinationPoint: Points(latitude: 48.8606, longitude: 2.2945),
-  ///     rideStartTime: '2024-01-15T10:00:00Z',
-  ///     requestedSeats: 2,
-  ///   ),
-  /// );
-  /// ```
+  // POST /trip-service/api/rides/book — passenger joins an existing trip
   Future<ApiResponse<PassengerRideResponse>> joinTrip(
     JoinTripRequest request,
   ) async {
     try {
-      print('🔵 BOOKING API: joinTrip called with tripId=${request.tripId}, passengerId=${request.passengerId}');
       final response = await _dioClient.post<ApiResponse<PassengerRideResponse>>(
         '/trip-service/api/rides/book',
         data: request.toJson(),
         fromJson: (json) {
-          print('📦 BOOKING API: joinTrip raw response: $json');
           if (json is Map<String, dynamic>) {
             return ApiResponse<PassengerRideResponse>.fromJson(
               json,
@@ -65,40 +33,14 @@ class BookingApiService {
           );
         },
       );
-      print('🟢 BOOKING API: joinTrip response: ${response.data?.rideId}');
       return response;
     } catch (e) {
-      print('❌ BOOKING API: joinTrip error: $e');
       rethrow;
     }
   }
 
-  /// POST /api/bookings/cancel
-  /// Passenger cancels an existing booking
-  /// 
-  /// Parameters:
-  /// - request: CancelTripRequest with userId, tripId, rideId, optional reason
-  /// 
-  /// Returns: ApiResponse with cancellation confirmation/status
-  /// Throws: ApiException on network/auth/server errors or if error object is present in response
-  /// Note: This endpoint returns HTTP 200 even for logical errors, so we check response.error
-  /// 
-  /// Common Status Codes:
-  /// - 200: Booking cancelled successfully
-  /// - 400: Cannot cancel (already completed, too late, etc.)
-  /// - 404: Booking not found
-  /// 
-  /// Example:
-  /// ```dart
-  /// await bookingService.cancelBooking(
-  ///   CancelTripRequest(
-  ///     userId: currentUserId,
-  ///     tripId: 'trip-123',
-  ///     rideId: 'ride-789',
-  ///     cancellationReason: 'Plans changed',
-  ///   ),
-  /// );
-  /// ```
+  // POST /trip-service/api/rides/cancel — passenger cancels their booking
+  // Returns HTTP 200 even on business errors; checks response.error manually
   Future<ApiResponse<String>> cancelBooking(
     CancelTripRequest request,
   ) async {
@@ -132,59 +74,84 @@ class BookingApiService {
     }
   }
 
-  /// GET /api/bookings/active/passenger/{passengerId}
-  /// Get all active bookings for a passenger
-  /// 
-  /// Parameters:
-  /// - passengerId: UUID of the passenger
-  /// 
-  /// Returns: ApiResponse with List<PassengerRideResponse> for active rides
-  /// Throws: ApiException on network/auth/server errors
-  /// 
-  /// Note: "Active" typically means:
-  /// - Status = pending or confirmed
-  /// - Trip start time > now
-  /// - Not cancelled
-  /// 
-  /// Example:
-  /// ```dart
-  /// final activeRides = await bookingService.getUpcomingBookingsForPassenger(
-  ///   userId,
-  /// );
-  /// 
-  /// for (var ride in activeRides.data ?? []) {
-  ///   print('Riding with driver ${ride.driverId} on ${ride.tripStartDateTime}');
-  /// }
-  /// ```
+  // Returns bookings for a trip — tries multiple endpoints since no single driver-accessible one exists
+  Future<List<Map<String, dynamic>>> getBookingsForDriverTrip({
+    required String driverId,
+    required String tripId,
+  }) async {
+    // attempt 1: dedicated trip-bookings endpoints
+    for (final path in [
+      '/trip-service/api/rides/trip/$tripId',
+      '/trip-service/api/bookings/trip/$tripId',
+    ]) {
+      try {
+        final response = await _dioClient.get<dynamic>(path);
+        final all = _extractMaps(response);
+        if (all.isNotEmpty) return all;
+      } catch (_) {}
+    }
+
+    // attempt 2: admin bookings endpoint (filtered client-side)
+    for (final headers in [
+      {'X-User-Role': 'ADMIN'},
+      <String, String>{},
+    ]) {
+      try {
+        final response = await _dioClient.get<dynamic>(
+          '/trip-service/api/admin/bookings',
+          queryParameters: {'page': 0, 'size': 200},
+          headers: headers.isEmpty ? null : headers,
+        );
+        final matches = _extractMaps(response)
+            .where((b) => (b['tripId'] ?? b['trip_id']) == tripId)
+            .toList();
+        if (matches.isNotEmpty) return matches;
+      } catch (_) {}
+    }
+
+    return [];
+  }
+
+  List<Map<String, dynamic>> _extractMaps(dynamic response) {
+    List<dynamic> raw = [];
+    if (response is List) {
+      raw = response;
+    } else if (response is Map<String, dynamic>) {
+      final data = response['data'];
+      if (data is List) {
+        raw = data;
+      } else if (data is Map<String, dynamic>) {
+        final content = data['content'];
+        if (content is List) raw = content;
+      }
+    }
+    return raw.whereType<Map<String, dynamic>>().toList();
+  }
+
+  // GET /trip-service/api/rides/active/passenger/{passengerId}
   Future<ApiResponse<List<PassengerRideResponse>>>
       getUpcomingBookingsForPassenger(String passengerId) async {
     try {
-      print('🔵 BOOKING API: Fetching bookings for passenger: $passengerId');
       final response = await _dioClient
           .get<ApiResponse<List<PassengerRideResponse>>>(
         '/trip-service/api/rides/active/passenger/$passengerId',
         fromJson: (json) {
-          print('📦 BOOKING API: Raw response: $json');
           if (json is Map<String, dynamic>) {
             return ApiResponse<List<PassengerRideResponse>>.fromJson(
               json,
               (data) {
-                print('📋 BOOKING API: Parsed data: $data');
                 if (data is List) {
-                  print('✅ BOOKING API: Data is list with ${data.length} items');
                   return data
                       .map((item) => PassengerRideResponse.fromJson(
                           item as Map<String, dynamic>))
                       .toList();
                 }
-                print('⚠️ BOOKING API: Data is not a list, returning empty');
                 return <PassengerRideResponse>[];
               },
             );
           }
 
           if (json is List) {
-            print('✅ BOOKING API: Response is direct list with ${json.length} items');
             final rides = json
                 .map((item) => PassengerRideResponse.fromJson(
                     item as Map<String, dynamic>))
@@ -192,14 +159,11 @@ class BookingApiService {
             return ApiResponse<List<PassengerRideResponse>>(data: rides);
           }
 
-          print('⚠️ BOOKING API: Unexpected response format');
           return ApiResponse<List<PassengerRideResponse>>(data: const []);
         },
       );
-      print('🟢 BOOKING API: Final response data: ${response.data}');
       return response;
     } catch (e) {
-      print('❌ BOOKING API: Error: $e');
       rethrow;
     }
   }

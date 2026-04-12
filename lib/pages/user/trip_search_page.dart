@@ -132,7 +132,6 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
           // Use current date/time to get all upcoming trips
           final now = DateTime.now();
           rideStartIso = now.toUtc().toIso8601String();
-          print('🔍 No date/time selected, using current time: $rideStartIso');
         } else {
           final combinedLocal = DateTime(
             _selectedDate!.year,
@@ -142,16 +141,8 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
             _selectedTime!.minute,
           );
           rideStartIso = combinedLocal.toUtc().toIso8601String();
-          print('🔍 Searching for trips at: $combinedLocal (UTC: $rideStartIso)');
         }
 
-        print('🔍 Search Parameters:');
-        print('  From: ${_fromController.text} ($_fromLatitude, $_fromLongitude)');
-        print('  To: ${_toController.text} ($_toLatitude, $_toLongitude)');
-        print('  Source Radius: $_sourceRadiusKm km');
-        print('  Destination Radius: $_destRadiusKm km');
-        print('  Requested Seats: $_selectedSeats');
-        print('  User ID: $userId');
         
         final repository = ref.read(tripRepositoryProvider);
         final trips = await repository.searchMatchingRoute(
@@ -166,25 +157,19 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
           effectiveUserId: userId,
         );
         
-        print('🔍 Found ${trips.length} trips from API');
 
         // Filter by price range and seats
         final filtered = trips.where((trip) {
           final fare = trip.estimatedFare;
           if (fare < _selectedMinPrice || fare > _selectedMaxPrice) {
-            print('  ❌ Trip ${trip.tripId} filtered out by price: $fare (range: $_selectedMinPrice-$_selectedMaxPrice)');
             return false;
           }
           if (trip.availableSeats < _selectedSeats) {
-            print('  ❌ Trip ${trip.tripId} filtered out by seats: ${trip.availableSeats} < $_selectedSeats');
             return false;
           }
           return true;
         }).toList();
         
-        print('🔍 After filtering: ${filtered.length} trips match criteria');
-        print('  Price range: $_selectedMinPrice - $_selectedMaxPrice');
-        print('  Min seats: $_selectedSeats');
 
         if (!context.mounted) return;
         

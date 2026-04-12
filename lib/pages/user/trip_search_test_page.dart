@@ -19,7 +19,6 @@ class _TripSearchTestPageState extends ConsumerState<TripSearchTestPage> {
     setState(() {
       _logs.add('[${DateTime.now().toIso8601String().substring(11, 19)}] $message');
     });
-    print(message);
   }
 
   Future<void> _testSearch1() async {

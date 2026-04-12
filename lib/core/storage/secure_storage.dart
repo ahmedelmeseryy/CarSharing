@@ -83,6 +83,16 @@ class TokenStorage {
     ]);
   }
 
+  /// Clear only the authentication tokens (access + refresh).
+  /// Does NOT remove user identity data (userId, role, profile).
+  /// Use this on 401 so the userId is preserved for re-login flows.
+  Future<void> clearAuthTokens() async {
+    await Future.wait([
+      _storage.delete(key: _keyAccessToken),
+      _storage.delete(key: _keyRefreshToken),
+    ]);
+  }
+
   Future<bool> hasValidToken() async {
     final token = await getAccessToken();
     return token != null && token.isNotEmpty;
