@@ -1,8 +1,6 @@
 import 'package:carsharing/shared/widgets/address_autocomplete_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:carsharing/core/providers/app_providers.dart';
-import 'package:carsharing/shared/widgets/map_location_picker.dart';
-import 'package:carsharing/shared/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carsharing/features/passenger/presentation/trip_search_results_page.dart';
@@ -220,66 +218,6 @@ class _TripSearchPageState extends ConsumerState<TripSearchPage> {
         );
       }
     }
-  }
-
-  Future<void> _useCurrentLocationForFrom() async {
-    final pos = await LocationService.getCurrentLocation();
-    if (pos != null) {
-      setState(() {
-        _fromLatitude = pos.latitude;
-        _fromLongitude = pos.longitude;
-        _fromController.text = '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
-      });
-    }
-  }
-
-  Future<void> _openMapPickerForFrom() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MapLocationPicker(
-          initialLat: _fromLatitude,
-          initialLon: _fromLongitude,
-          onLocationSelected: (lat, lon, address) {
-            setState(() {
-              _fromLatitude = lat;
-              _fromLongitude = lon;
-              _fromController.text = address;
-            });
-          },
-        ),
-      ),
-    );
-  }
-
-  Future<void> _useCurrentLocationForTo() async {
-    final pos = await LocationService.getCurrentLocation();
-    if (pos != null) {
-      setState(() {
-        _toLatitude = pos.latitude;
-        _toLongitude = pos.longitude;
-        _toController.text = '${pos.latitude.toStringAsFixed(6)}, ${pos.longitude.toStringAsFixed(6)}';
-      });
-    }
-  }
-
-  Future<void> _openMapPickerForTo() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => MapLocationPicker(
-          initialLat: _toLatitude,
-          initialLon: _toLongitude,
-          onLocationSelected: (lat, lon, address) {
-            setState(() {
-              _toLatitude = lat;
-              _toLongitude = lon;
-              _toController.text = address;
-            });
-          },
-        ),
-      ),
-    );
   }
 
   @override

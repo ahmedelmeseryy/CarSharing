@@ -13,7 +13,7 @@ class UserDashboardPage extends StatefulWidget {
   const UserDashboardPage({super.key, this.initialIndex = 0});
 
   @override
-  _UserDashboardPageState createState() => _UserDashboardPageState();
+  State<UserDashboardPage> createState() => _UserDashboardPageState();
 }
 
 class _UserDashboardPageState extends State<UserDashboardPage> {
@@ -137,7 +137,7 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
               );
             },
             data: (data) {
-              var bookings = (data as List).cast<PassengerRideResponse>();
+              var bookings = data.cast<PassengerRideResponse>();
               
               // Deduplicate by tripId (in case there are duplicates in API response)
               final seen = <String>{};
@@ -156,9 +156,6 @@ class _BookedTripsPageState extends ConsumerState<BookedTripsPage> {
                   .toList();
               
               bookings = [...bookings, ...uniqueLocalBookings];
-              
-              if (bookings.isNotEmpty) {
-              }
 
               if (bookings.isEmpty) {
                 return RefreshIndicator(

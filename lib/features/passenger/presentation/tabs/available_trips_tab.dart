@@ -81,7 +81,7 @@ class _AvailableTripsTabState extends ConsumerState<AvailableTripsTab> {
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err')),
       data: (data) {
-        final trips = (data as List).cast<Trip>();
+        final trips = data.cast<Trip>();
 
         // Apply text filter to addresses
         List<Trip> filtered = trips;

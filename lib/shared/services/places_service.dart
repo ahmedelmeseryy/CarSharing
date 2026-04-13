@@ -52,17 +52,11 @@ class PlaceLocation {
 }
 
 class PlacesService {
-  // OpenStreetMap Nominatim API (free, no API key required!)
-  static const String _nominatimBaseUrl = 'https://nominatim.openstreetmap.org';
-
   // Simple in-memory cache to avoid repeated Nominatim requests
   static final Map<String, _CacheEntry> _cache = {};
 
   // Track ongoing requests per query to coalesce concurrent calls
   static final Map<String, Future<List<PlacePrediction>>> _ongoingRequests = {};
-
-  // Minimum interval between outbound requests for the same query (ms)
-  static const int _minRequestIntervalMs = 250;
 
   // Cache TTL
   static const Duration _cacheTtl = Duration(seconds: 60);
@@ -194,12 +188,12 @@ class PlacesService {
             }
           } else {
           }
-        } on SocketException catch (se) {
+        } on SocketException {
           if (attempt < maxAttempts) {
             await Future.delayed(Duration(milliseconds: 300 * attempt));
             continue;
           }
-        } on TimeoutException catch (te) {
+        } on TimeoutException {
           if (attempt < maxAttempts) {
             await Future.delayed(Duration(milliseconds: 300 * attempt));
             continue;

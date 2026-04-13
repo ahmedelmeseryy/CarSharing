@@ -55,7 +55,7 @@ class BookingRepositoryImpl implements IBookingRepository {
       
       final result = response.data ?? <PassengerRideResponse>[];
       return result;
-    } catch (e, st) {
+    } catch (e) {
       
       // Handle 404 - endpoint not implemented on backend yet
       if (e.toString().contains('404') || e.toString().contains('NOT_FOUND')) {

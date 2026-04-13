@@ -54,11 +54,9 @@ class SeedTestTrips {
           daysFromNow: 1, hour: 10, seats: 4),
     ];
 
-    int successCount = 0;
     for (final request in trips) {
       try {
         await service.offerTrip(request);
-        successCount++;
       } catch (e) {
         // ignore: avoid_print
       }

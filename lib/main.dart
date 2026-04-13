@@ -293,29 +293,31 @@ class _SignUpPageState extends State<SignUpPage> {
                             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 16),
-                          RadioGroup<String>(
-                            groupValue: _selectedRole,
-                            onChanged: (value) {
-                              if (value != null) setState(() => _selectedRole = value);
-                            },
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: RadioListTile<String>(
-                                    title: const Text('User'),
-                                    subtitle: const Text('Book rides'),
-                                    value: 'user',
-                                  ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('User'),
+                                  subtitle: const Text('Book rides'),
+                                  value: 'user',
+                                  groupValue: _selectedRole,
+                                  onChanged: (value) {
+                                    if (value != null) setState(() => _selectedRole = value);
+                                  },
                                 ),
-                                Expanded(
-                                  child: RadioListTile<String>(
-                                    title: const Text('Driver'),
-                                    subtitle: const Text('Offer rides'),
-                                    value: 'driver',
-                                  ),
+                              ),
+                              Expanded(
+                                child: RadioListTile<String>(
+                                  title: const Text('Driver'),
+                                  subtitle: const Text('Offer rides'),
+                                  value: 'driver',
+                                  groupValue: _selectedRole,
+                                  onChanged: (value) {
+                                    if (value != null) setState(() => _selectedRole = value);
+                                  },
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

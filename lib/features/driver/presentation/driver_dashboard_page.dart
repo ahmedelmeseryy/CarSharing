@@ -36,21 +36,23 @@ class _DriverDashboardPageState extends ConsumerState<DriverDashboardPage> {
     return WillPopScope(
       onWillPop: () async => false,
       child: Scaffold(
-      appBar: AppBar(
-        title: Text(_getAppBarTitle()),
-        actions: _selectedIndex == 1
-            ? [
-                IconButton(
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Refresh',
-                  onPressed: () {
-                    final state = context.findAncestorStateOfType<_DriverTripsPageState>();
-                    state?._refresh();
-                  },
-                ),
-              ]
-            : null,
-      ),
+      appBar: _selectedIndex == 2
+          ? null
+          : AppBar(
+              title: Text(_getAppBarTitle()),
+              actions: _selectedIndex == 1
+                  ? [
+                      IconButton(
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Refresh',
+                        onPressed: () {
+                          final state = context.findAncestorStateOfType<_DriverTripsPageState>();
+                          state?._refresh();
+                        },
+                      ),
+                    ]
+                  : null,
+            ),
         body: _widgetOptions.elementAt(_selectedIndex),
         bottomNavigationBar: BottomNavigationBar(
           items: const <BottomNavigationBarItem>[

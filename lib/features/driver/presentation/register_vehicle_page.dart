@@ -72,7 +72,7 @@ class _RegisterVehiclePageState extends State<RegisterVehiclePage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                initialValue: _vehicleType,
+                value: _vehicleType,
                 decoration: const InputDecoration(
                   labelText: 'Vehicle Type',
                   border: OutlineInputBorder(),

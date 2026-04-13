@@ -177,7 +177,7 @@ class _AddTripPageState extends ConsumerState<AddTripPage> {
             children: [
               // Vehicle selector
               DropdownButtonFormField<Map<String, dynamic>>(
-                initialValue: _selectedVehicle,
+                value: _selectedVehicle,
                 decoration: const InputDecoration(
                   labelText: 'Select Vehicle',
                   border: OutlineInputBorder(),
