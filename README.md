@@ -22,7 +22,6 @@ A feature-rich car-sharing application built with Flutter, connecting drivers wi
 - **Create Trip:** Set pickup/destination from autocomplete, date, time, seats, price per seat
 - **My Trips:** View all active trips with booked seat count
 - **Passenger List:** See who has booked each trip (name, contact, seats, status)
-- **Cancel Trip:** Cancel a trip — all passenger bookings are updated automatically
 
 ### Admin
 - **Overview:** Paginated list of all upcoming and historical trips with full details
@@ -198,42 +197,13 @@ flutter run
 4. Set start point, destination, date, time, seats, and price
 5. View your trips in the **My Trips** tab
 6. Tap a trip to see the passenger list
-7. Cancel a trip if needed — all passengers are notified
+7. Cancel a trip if needed
 
 ### As an Admin
 1. Log in with an admin account
 2. **Overview tab:** Monitor all trips
 3. **Users tab:** Approve/reject drivers, delete accounts
 
-
----
-
-## 🔄 Changelog
-
-### v2.2.0 — Current
-- ✅ Full project restructure: feature-based Clean Architecture with `features/<name>/presentation` layers
-- ✅ Shared code moved to `shared/widgets`, `shared/services`, `shared/utils`, `shared/models`, `shared/constants`
-- ✅ All imports updated to reflect new package paths — no broken references
-- ✅ `ProfilePage` extracted from `main.dart` into `features/profile/presentation/profile_page.dart`
-- ✅ Admin cascade delete: cancels all user trips/bookings before deleting an account
-
-### v2.1.0
-- ✅ Cancelled bookings hidden from passenger's booking list
-- ✅ Cancelled passengers filtered from driver's passenger list
-- ✅ Fixed trip creation: `vehicleNumber` now sent in request; vehicle dropdown shows correct names
-- ✅ Fixed "Failed to create trip" false error — success now detected via `tripId` presence
-- ✅ Fixed My Trips infinite loading — 401 interceptor no longer wipes `user_id` from storage
-- ✅ Removed all debug print statements
-- ✅ Cleaned up unused files and outdated documentation
-
-### v2.0.0
-- ✅ Fully migrated from Firebase to REST API backend
-- ✅ JWT authentication replacing Firebase Auth
-- ✅ Admin dashboard with trip overview and user management
-- ✅ Driver trip details page with passenger info
-- ✅ Haversine fallback search when `/matching-route` endpoint is unavailable
-- ✅ Custom `DateTimeConverter` — backend-compatible ISO format without milliseconds
-- ✅ Local booking cache — newly created bookings appear instantly
 
 ---
 
