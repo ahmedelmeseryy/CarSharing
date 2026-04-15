@@ -4,7 +4,6 @@ import 'package:carsharing/core/storage/secure_storage.dart';
 import 'package:carsharing/features/auth/data/services/auth_api_service.dart';
 import 'package:carsharing/features/trip/data/services/trip_api_service.dart';
 import 'package:carsharing/features/user/data/services/user_api_service.dart';
-import 'package:carsharing/features/admin/presentation/seed_trips_page.dart';
 
 /// Resolves a display name from a user map.
 String _resolveName(Map<String, dynamic> u) {
@@ -25,7 +24,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   final List<Widget> _tabs = const [
     _AdminOverviewTab(),
-    SeedTripsPage(),
     _ManageUsersTab(),
     _AdminProfileTab(),
   ];
@@ -43,7 +41,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           selectedItemColor: Colors.deepPurple,
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Overview'),
-            BottomNavigationBarItem(icon: Icon(Icons.storage), label: 'Test Trips'),
             BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Users'),
             BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],

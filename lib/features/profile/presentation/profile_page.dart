@@ -152,26 +152,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        automaticallyImplyLeading: true,
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: Row(
-          children: [
-            const Icon(Icons.directions_car, color: Colors.blue),
-            const Spacer(),
-            ElevatedButton(
-              onPressed: () => _logout(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              ),
-              child: const Text('Logout'),
-            ),
-          ],
-        ),
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Center(
@@ -406,6 +386,17 @@ class _ProfilePageState extends State<ProfilePage> {
                                 side: const BorderSide(color: Colors.blue),
                               ),
                             ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => _logout(context),
+                              icon: const Icon(Icons.logout),
+                              label: const Text('Logout'),
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 48),
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -414,14 +405,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
               ),
             ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 2,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.directions_car), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: ''),
-        ],
-      ),
     );
   }
 }
